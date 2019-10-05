@@ -11,7 +11,6 @@
 
  ; Uncommenting the following line will replace the score with the approximate number of free cycles available in a given frame (+ or - 64).
  ;White is positive; red is negative. We don't want this number to be red (when I tested it out, it wasn't, but I did test it on an emulator).
- ;This takes up a good bit of space, though!
  ;set debug cyclescore
  
  ; This game uses the text minikernel by Karl G. Don't try compiling this file without the minikernel's files in the same directory.
@@ -65,7 +64,7 @@ end
  dim bit2_isAbigail = d
  dim bit3_yoyoRetract = d
  dim bit4_bonusActive = d 
- dim bit5_canShootAtPreviousPosition = d
+ dim bit5_blockPreviousPosition = d
 
  ;The high 2 bytes of d are free.
 
@@ -103,6 +102,8 @@ end
 
  dim previousPositionFiredAt = t
 
+ 
+
  ;  V W X are all free. Player 4 x/y are both also free, maybe.
  
  ;===
@@ -116,7 +117,7 @@ end
  __B, __Y, _sp, __M, __A, __C, __O, __S, __T, __E, __N, _ex
  __U, __P,  _sp, __T, __O, _sp, __S, __T, __A, __R, __T, _sp
  __G, __A, __M, __E, _sp, __O, __V, __E, __R, _pd,  _pd, _pd
-  __C, __H, __A, __N, __G, __E, _sp, __A, __N, __G, __L, __E
+  __M, __O, __V, __E, _sp, __A, __R, __O, __U, __N, __D, _ex
 end
 
  const gameTitleStringOffset = 0
@@ -362,14 +363,17 @@ _beginFrame
  
  NUSIZ5 = livesNUSIZTable[myLives]
  
- TextIndex = gameTitleStringOffset ; for now, we'll just have the title displayed by the text minikernel while the game is active. 
+ if bit5_blockPreviousPosition{5} then TextIndex = moveAwayErrorStringOffset else TextIndex = gameTitleStringOffset ;If the previous position is blocked, tell the player to move; else just have the title displayed by the text minikernel while the game is active. 
  ;We can display other things, if we want... as long as we have the space to store them in ROM.
 
  ;===
  ;Yoyo
  ;===
- 
- ;The secondary check stops a bug in which the yoyo will not be caught if fite is held during collision.
+
+ ;Don't check for input if we're at a blocked position. 
+ if bit5_blockPreviousPosition{5} && !bit0_isYoyoDeployed{0} && previousPositionFiredAt = playerPosition then goto _end_yoyoMovement
+
+ ;The secondary check stops a bug in which the yoyo will not be caught if fire is held during collision.
  if joy0fire && yoyoCooldown = 0 && !bit0_isYoyoDeployed{0} then bit0_isYoyoDeployed{0} = 1 : yoyoCooldown = 8 : callmacro soundInitC0 2 4 14 8 ; The fact that holding down the spacebar can cause the cooldown to be nonzero when the yoyo is caught again could be undesirable, but probably won't matter. 
  if !bit0_isYoyoDeployed{0} then goto _end_yoyoMovement
 
@@ -382,8 +386,15 @@ _end_yoyoMovement
 
  ;If the yoyo collided with the playfield, then it crashed into Roothless, so we get one point. Then, it should bounce back to us.
  ;Yes, Roothless is the two-by-two black square in the middle. What do you think this is, a fancy NES?
- if collision(ball, playfield) && !bit3_yoyoRetract{3} then score = score + 1 : bit3_yoyoRetract{3} = 1 : guardSpeed = guardSpeed + 0.00390625 : callmacro soundInitC0 2 4 9 8
 
+ if collision(ball, playfield) && !bit3_yoyoRetract{3} then score = score + 1 : bit3_yoyoRetract{3} = 1 : guardSpeed = guardSpeed + 0.00390625 : callmacro soundInitC0 2 4 9 8 else goto _skip_updatePreviousPosition
+ 
+ ;Now we'll check if this is the same position we fired the yoyo from last time.
+ ;If it is, we'll block the current position; the player won't be able to fire a yoyo from there.
+ ;Otherwise, we'll update the previous firing position to the current one, then unblock it.
+ if previousPositionFiredAt = playerPosition then bit5_blockPreviousPosition{5} = 1 else previousPositionFiredAt = playerPosition : bit5_blockPreviousPosition{5} = 0
+
+_skip_updatePreviousPosition
 
  ;If the yoyo is touching any of the guards (the virtual sprites), return the yoyo to the player, then decrement lives.
  ;The fact that the guard we run into specifically doesn't matter is actually helpful, because it saves us from checking coordinates of virtual sprites.

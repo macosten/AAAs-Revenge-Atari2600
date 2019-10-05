@@ -1,0 +1,564 @@
+ rem Generated 8/29/2019 9:06:07 PM by Visual bB Version 1.0.0.568
+ rem **********************************
+ rem * AAA's Revenge                      *
+ rem * A remake of the Neopets game, for the Atari 2600! *
+ rem * Can you get to 1000 points? At least this version shouldn't crash when you get there... *
+ rem * by /u/macosten                 *
+ rem **********************************
+
+ set kernel multisprite
+ set romsize 4k
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ macro returnYoyoToPlayer
+ yoyoX  =  player0x  +  4
+ yoyoY  =  player0y  -  4
+end
+
+
+ macro soundInitC0
+ AUDV0  =  {1}
+ AUDC0  =  {2}
+ AUDF0  =  {3}
+ channel0SoundTimer  =  {4}
+end
+
+
+ macro soundInitC1
+ AUDV1  =  {1}
+ AUDC1  =  {2}
+ AUDF1  =  {3}
+ channel1SoundTimer  =  {4}
+end
+
+
+
+
+
+
+
+
+ def playerPosition  =  a
+
+ dim channel0SoundTimer  =  b
+
+
+ def cooldown  =  c
+
+
+ dim bit0_isYoyoDeployed  =  d
+ dim bit1_resetRestrainer  =  d
+ dim bit2_isAbigail  =  d
+ dim bit3_yoyoRetract  =  d
+ dim bit4_bonusActive  =  d
+ dim bit5_blockPreviousPosition  =  d
+
+
+
+ dim yoyoCooldown  =  e
+
+
+ dim yoyoX  =  ballx.f
+ dim yoyoY  =  bally.g
+
+
+
+ dim yoyoXvelocityint  =  h
+ dim yoyoXvelocityfrac  =  i
+
+ dim yoyoYvelocityint  =  j
+ dim yoyoYvelocityfrac  =  k
+
+ dim yoyoXvelocity  =  yoyoXvelocityint.yoyoXvelocityfrac
+ dim yoyoYvelocity  =  yoyoYvelocityint.yoyoYvelocityfrac
+
+ dim guardSpeedInt  =  l
+ dim guardSpeedFrac  =  m
+
+ dim guardSpeed  =  guardSpeedInt.guardSpeedFrac
+
+ dim channel1SoundTimer  =  n
+
+ dim bitX_isGuardFacingLeft  =  o
+
+ dim guard1x  =  player1x.p
+ dim guard2x  =  player2x.q
+ dim guard3y  =  player3y.r
+
+ dim myLives  =  s
+
+ dim previousPositionFiredAt  =  t
+
+
+
+
+
+
+
+
+ dim TextTimer  =  y
+ dim TextIndex  =  z
+
+ data text_strings
+ __A, __A, __A, __S, _sp, __R, __E, __V, __E, __N, __G, __E ;Each line must have 12 characters.
+ __B, __Y, _sp, __M, __A, __C, __O, __S, __T, __E, __N, _ex
+ __U, __P,  _sp, __T, __O, _sp, __S, __T, __A, __R, __T, _sp
+ __G, __A, __M, __E, _sp, __O, __V, __E, __R, _pd,  _pd, _pd
+  __M, __O, __V, __E, _sp, __A, __R, __O, __U, __N, __D, _ex
+end
+
+ const gameTitleStringOffset  =  0
+ const byMacostenStringOffset  =  12
+ const startGameStringOffset  =  24
+ const gameOverStringOffset  =  36
+ const moveAwayErrorStringOffset  =  48
+
+ const gameOverLoopOffsetLimit  =  gameOverStringOffset
+
+
+
+
+
+
+
+
+
+
+
+
+ data livesNUSIZTable
+ 0, 0, 1, 3
+end
+
+
+ const XPOS0  =  $26
+ const XPOS1  =  $38
+ const XPOS2  =  $4C
+ const XPOS3  =  $60
+ const XPOS4  =  $72
+
+ const YPOS0  =  $58
+ const YPOS1  =  $46
+ const YPOS2  =  $32
+ const YPOS3  =  $1E
+ const YPOS4  =  $0B
+
+ const CENTERX  =  $50
+ const CENTERY  =  $36
+
+
+
+
+ pfheight  =  3
+ playfield:
+..........
+..........
+.XXX..XXX.
+.X........
+.X........
+..........
+..........
+.X........
+.X........
+.X........
+.........X
+.........X
+.X........
+.X........
+.X........
+..........
+..........
+.X........
+.X........
+.XXX..XXX.
+..........
+..........
+end
+
+
+
+
+
+_boot
+
+ drawscreen
+ TextIndex  =  gameTitleStringOffset
+ TextColor  =  $0F
+
+
+
+
+
+_gameOverLoop
+
+ COLUBK  =  $42
+
+ TextTimer  =  TextTimer  +  1
+ if TextTimer  =  255 then TextIndex  =  TextIndex  +  12
+ if TextIndex  >  gameOverLoopOffsetLimit then TextIndex  =  0
+
+ if joy0up then goto _startGame
+
+
+ if channel0SoundTimer  =  0 then AUDV0  =  0 else channel0SoundTimer  =  channel0SoundTimer  -  1
+ if channel1SoundTimer  =  0 then AUDV1  =  0 else channel1SoundTimer  =  channel1SoundTimer  -  1
+
+ drawscreen
+
+ if !switchreset then bit1_resetRestrainer{1}  =  0  :  goto _gameOverLoop
+
+
+ goto _boot
+
+
+_startGame
+
+
+
+
+
+ AUDV0  =  0  :  AUDV1  =  0
+ AUDC0  =  0  :  AUDC1  =  0
+ AUDF0  =  0  :  AUDF1  =  0
+ a  =  0  :  b  =  0  :  c  =  0  :  d  =  0  :  e  =  0  :  f  =  0  :  g  =  0  :  h  =  0  :  i  =  0  :  j  =  0  :  k  =  0  :  l  =  0  :  m  =  0  :  n  =  0  :  o  =  0  :  p  =  0  :  q  =  0  :  r  =  0  :  myLives  =  3
+ t  =  0  :  u  =  0  :  v  =  0  :  w  =  0  :  x  =  0
+ y  =  0  :  z  =  0
+
+ score  =  0
+
+
+
+
+ player0:
+ %00011000
+ %00011000
+ %00111100
+ %00111100
+ %00111100
+ %11000011
+ %11000011
+end
+
+
+
+ player1:
+ %00100100
+ %00100100
+ %10111101
+ %11111111
+ %00011000
+ %00111110
+ %00110110
+ %00111100
+end
+
+
+ player2:
+ %00100100
+ %00100100
+ %10111101
+ %11111111
+ %00011000
+ %00111110
+ %00110110
+ %00111100
+end
+
+
+
+ gosub _sr_player3direction
+
+
+
+
+ player5:
+ %00011000
+ %00111100
+ %01111110
+ %11111111
+ %11111111
+ %01100110
+end
+
+
+
+ if switchleftb then bit2_isAbigail{2}  =  1 else bit2_isAbigail{2}  =  0
+
+
+ COLUBK  =  $08
+ scorecolor  =  $00
+
+
+
+
+ playerPosition  =  0
+ gosub _sr_movePlayer
+
+
+
+
+
+ player1x  =  $44  +  rand / 8
+ player1y  =  $40
+
+
+ player2x  =  $44  +  rand / 8
+ player2y  =  $20
+
+
+ player3x  =  $44
+ player3y  =  $20  +  rand / 8
+
+
+ player5x  =  $0A
+ player5y  =  $08
+
+
+ guardSpeed  =  0.5
+
+
+ bitX_isGuardFacingLeft  =  rand
+
+
+ callmacro returnYoyoToPlayer
+
+
+
+
+
+
+_beginFrame
+
+
+
+
+
+
+
+ COLUBK  =  $08
+
+
+
+ if bit2_isAbigail{2} then COLUP0  =  $9C else COLUP0  =  $2A
+
+
+ _COLUP1  =  $16  :  COLUP2  =  $F4  :  COLUP3  =  $66  :  COLUP5  =  $40
+
+
+ NUSIZ3  =  $02
+
+
+ NUSIZ5  =  livesNUSIZTable[myLives]
+
+ if bit5_blockPreviousPosition{5} then TextIndex  =  moveAwayErrorStringOffset else TextIndex  =  gameTitleStringOffset
+
+
+
+
+
+
+
+ if bit5_blockPreviousPosition{5}  &&  previousPositionFiredAt  &&  !bit0_isYoyoDeployed{0}  =  playerPosition then goto _end_yoyoMovement
+
+
+ if joy0fire  &&  yoyoCooldown  =  0  &&  !bit0_isYoyoDeployed{0} then bit0_isYoyoDeployed{0}  =  1  :  yoyoCooldown  =  8  :  callmacro soundInitC0 2 4 14 8
+ if !bit0_isYoyoDeployed{0} then goto _end_yoyoMovement
+
+ if yoyoCooldown  >  0 then yoyoCooldown  =  yoyoCooldown  -  1
+
+
+ if bit3_yoyoRetract{3} then yoyoX  =  yoyoX  -  yoyoXvelocity  :  yoyoY  =  yoyoY  -  yoyoYvelocity else yoyoX  =  yoyoX  +  yoyoXvelocity  :  yoyoY  =  yoyoY  +  yoyoYvelocity
+
+_end_yoyoMovement
+
+
+
+
+ if collision(ball,playfield)  &&  !bit3_yoyoRetract{3} then score  =  score  +  1  :  bit3_yoyoRetract{3}  =  1  :  guardSpeed  =  guardSpeed  +  0.00390625  :  callmacro soundInitC0 2 4 9 8 else goto _skip_updatePreviousPosition
+
+
+
+
+ if previousPositionFiredAt  =  playerPosition then bit5_blockPreviousPosition{5}  =  1 else previousPositionFiredAt  =  playerPosition  :  bit5_blockPreviousPosition{5}  =  0
+
+_skip_updatePreviousPosition
+
+
+
+ if collision(player1,ball) then callmacro returnYoyoToPlayer  :  yoyoXvelocity  =  0  :  yoyoYvelocity  =  0  :  myLives  =  myLives  -  1  :  callmacro soundInitC1 10 6 16 8
+ if myLives  =  0 then player5y  =  0  :  TextIndex  =  gameOverStringOffset  :  goto _gameOverLoop
+
+
+
+
+ if collision(ball,player0)  &&  yoyoCooldown  =  0 then gosub _sr_movePlayer  :  bit0_isYoyoDeployed{0}  =  0  :  bit3_yoyoRetract{3}  =  0
+
+
+
+
+
+
+
+
+
+
+
+
+ if cooldown  >  0 then cooldown  =  cooldown - 1
+ if cooldown  >  0 then goto _end_setPlayerPosition
+
+
+ if bit0_isYoyoDeployed{0} then goto _end_setPlayerPosition
+
+
+
+ if !joy0right goto _skip_movePlayerRight
+ if playerPosition  =  11 then playerPosition =  0 else playerPosition =  playerPosition  + 1
+ gosub _sr_movePlayer
+_skip_movePlayerRight
+
+ if !joy0left goto _skip_movePlayerLeft
+ if playerPosition  =  0 then playerPosition  =  11 else playerPosition  =  playerPosition  - 1
+ gosub _sr_movePlayer
+_skip_movePlayerLeft
+
+
+ ballx  =  player0x  +  4
+ bally  =  player0y  -  4
+
+ cooldown  =  8
+
+_end_setPlayerPosition
+
+
+
+
+
+
+
+
+ if player1x  >=  $64 then bitX_isGuardFacingLeft{0}  =  1
+ if player1x  <=  $44 then bitX_isGuardFacingLeft{0}  =  0
+ if bitX_isGuardFacingLeft{0} then guard1x  =  guard1x  -  guardSpeed  :  _NUSIZ1  =  $08 else guard1x  =  guard1x  +  guardSpeed  :  _NUSIZ1  =  $00
+
+ if player2x  >=  $64 then bitX_isGuardFacingLeft{1}  =  1
+ if player2x  <=  $44 then bitX_isGuardFacingLeft{1}  =  0
+ if bitX_isGuardFacingLeft{1} then guard2x  =  guard2x  -  guardSpeed  :  NUSIZ2  =  $08 else guard2x  =  guard2x  +  guardSpeed  :  NUSIZ2  =  $00
+
+ if player3y  >=  $40 then bitX_isGuardFacingLeft{2}  =  1
+ if player3y  <=  $20 then bitX_isGuardFacingLeft{2}  =  0
+ if bitX_isGuardFacingLeft{2} then guard3y  =  guard3y  -  guardSpeed else guard3y  =  guard3y  +  guardSpeed
+ gosub _sr_player3direction
+
+
+
+
+
+
+
+ if channel0SoundTimer  =  0 then AUDV0  =  0 else channel0SoundTimer  =  channel0SoundTimer  -  1
+ if channel1SoundTimer  =  0 then AUDV1  =  0 else channel1SoundTimer  =  channel1SoundTimer  -  1
+
+
+
+
+
+ drawscreen
+
+
+
+
+
+
+
+ if !switchreset then bit1_resetRestrainer{1}  =  0  :  goto _beginFrame
+
+
+ goto _boot
+
+
+
+
+
+
+
+
+ data player0xTable
+ XPOS2,  XPOS3,  XPOS4,  XPOS4, XPOS4, XPOS3, XPOS2, XPOS1, XPOS0, XPOS0, XPOS0, XPOS1
+end
+
+ data player0yTable
+ YPOS0, YPOS0, YPOS1, YPOS2, YPOS3, YPOS4, YPOS4, YPOS4, YPOS3, YPOS2, YPOS1, YPOS0
+end
+
+ data yoyoXvelocityintTable
+ $00, $FF, $FF, $FF, $FF, $FF, $00, $00, $01, $01, $01, $00
+end
+
+ data yoyoXvelocityfracTable
+ $00, $8C, $00, $00, $00, $8C, $00, $80, $00, $00, $00, $80
+end
+
+ data yoyoYvelocityintTable
+ $FF, $FF, $FF, $00, $00, $01, $01, $01, $00, $00, $FF, $FF
+end
+
+ data yoyoYvelocityfracTable
+ $00, $00, $80, $00, $80, $00, $00, $00, $80, $00, $80, $00
+end
+
+_sr_movePlayer
+
+
+ player0x  =  player0xTable[a]
+ player0y  =  player0yTable[a]
+ yoyoXvelocityint  =  yoyoXvelocityintTable[a]
+ yoyoXvelocityfrac  =  yoyoXvelocityfracTable[a]
+ yoyoYvelocityint  =  yoyoYvelocityintTable[a]
+ yoyoYvelocityfrac  =  yoyoYvelocityfracTable[a]
+ return
+
+_sr_player3direction
+ if !bitX_isGuardFacingLeft{2} then goto _player3faceUp
+_player3faceDown
+ player3:
+ %00100100
+ %00100100
+ %10111101
+ %11111111
+ %00111100
+ %01011010
+ %01111110
+ %01111110
+end
+ return
+_player3faceUp
+ player3:
+ %00100100
+ %00100100
+ %10111101
+ %11111111
+ %00111100
+ %01111110
+ %01011010
+ %01111110
+end
+ return
+
+ inline text12b.asm
+
+ inline text12a.asm
+
