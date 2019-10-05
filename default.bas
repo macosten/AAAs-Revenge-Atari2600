@@ -449,7 +449,8 @@ _end_setPlayerPosition
 
  if player3y >= $40 then bitX_isGuardFacingLeft{2} = 1
  if player3y <= $20 then bitX_isGuardFacingLeft{2} = 0
- if bitX_isGuardFacingLeft{2} then guard3y = guard3y - guardSpeed : gosub _sr_player3direction else guard3y = guard3y + guardSpeed : gosub _sr_player3direction
+ if bitX_isGuardFacingLeft{2} then guard3y = guard3y - guardSpeed else guard3y = guard3y + guardSpeed
+ gosub _sr_player3direction 
  ;====
  ;Done with enemies
  ;====
