@@ -370,13 +370,19 @@ _beginFrame
  ;Yoyo
  ;===
 
+ ;All of the below checks before _start_yoyoMovement used to depend on this bit being off, so to save space, let's just skip them all if this bit is on instead.
+ if bit0_isYoyoDeployed{0} then goto _start_yoyoMovement
+
  ;Don't check for input if we're at a blocked position. 
- if bit5_blockPreviousPosition{5} && !bit0_isYoyoDeployed{0} && previousPositionFiredAt = playerPosition then goto _end_yoyoMovement
+ if bit5_blockPreviousPosition{5} && previousPositionFiredAt = playerPosition then goto _end_yoyoMovement
 
  ;The secondary check stops a bug in which the yoyo will not be caught if fire is held during collision.
- if joy0fire && yoyoCooldown = 0 && !bit0_isYoyoDeployed{0} then bit0_isYoyoDeployed{0} = 1 : yoyoCooldown = 8 : callmacro soundInitC0 2 4 14 8 ; The fact that holding down the spacebar can cause the cooldown to be nonzero when the yoyo is caught again could be undesirable, but probably won't matter. 
+ if joy0fire && yoyoCooldown = 0 then bit0_isYoyoDeployed{0} = 1 : yoyoCooldown = 8 : callmacro soundInitC0 2 4 14 8 ; The fact that holding down the spacebar can cause the cooldown to be nonzero when the yoyo is caught again could be undesirable, but probably won't matter. 
+ 
+ ;This check should still be here just because it otherwise will cause the yoyo to jitter around.
  if !bit0_isYoyoDeployed{0} then goto _end_yoyoMovement
 
+_start_yoyoMovement
  if yoyoCooldown > 0 then yoyoCooldown = yoyoCooldown - 1
  
 ;Move the yoyo.
