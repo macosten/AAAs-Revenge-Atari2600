@@ -8,7 +8,8 @@
 
  set kernel multisprite
  set romsize 4k
-
+ set optimization size
+ 
  ; Uncommenting the following line will replace the score with the approximate number of free cycles available in a given frame (+ or - 64).
  ;White is positive; red is negative. We don't want this number to be red (when I tested it out, it wasn't, but I did test it on an emulator).
  ;set debug cyclescore
@@ -63,7 +64,7 @@ end
  dim bit1_resetRestrainer = d
  dim bit2_isAbigail = d
  dim bit3_yoyoRetract = d
- dim bit4_bonusActive = d 
+ dim bit4_powerupActive = d 
  dim bit5_blockPreviousPosition = d
 
  ;The high 2 bytes of d are free.
@@ -102,14 +103,16 @@ end
 
  dim previousPositionFiredAt = t
 
- 
+ dim powerupType = u
 
- ;  V W X are all free. Player 4 x/y are both also free, maybe.
+ dim freezeTimer = v
+
+ ;  W X are all free.
  
  ;===
  ;Text Minikernel Stuff
  ;===
- dim TextTimer = y
+ dim TextTimer = y 
  dim TextIndex = z ;For the Text Minikernel.
 
  data text_strings
@@ -159,6 +162,56 @@ end
  const CENTERX = $50
  const CENTERY = $36
 
+ const PXLEFT = $44
+ const PXCENTER = $54
+ const PXRIGHT = $64
+ 
+ const PYLOW = $16
+ const PYHIGH = $4A
+
+ ;Values to check bally against to see if it ran into a guard or a powerup
+ const GUARDTOP = $40
+ const GUARDBOTTOM = $18 ; 
+
+ ;Color of the background (while the game is active).
+ const BGCOLOR = $08 
+ const GAMEOVERCOLOR = $42
+
+ ;Powerup types and colors.
+ const PSNOWFLAKE = 0
+
+ data player0xTable
+ XPOS2,  XPOS3,  XPOS4,  XPOS4, XPOS4, XPOS3, XPOS2, XPOS1, XPOS0, XPOS0, XPOS0, XPOS1
+end
+
+ data player0yTable
+ YPOS0, YPOS0, YPOS1, YPOS2, YPOS3, YPOS4, YPOS4, YPOS4, YPOS3, YPOS2, YPOS1, YPOS0
+end
+
+ data yoyoXvelocityintTable
+ $00, $FF, $FF, $FF, $FF, $FF, $00, $00, $01, $01, $01, $00
+end
+ 
+ data yoyoXvelocityfracTable
+ $00, $8C, $00, $00, $00, $8C, $00, $80, $00, $00, $00, $80
+end
+
+ data yoyoYvelocityintTable
+ $FF, $FF, $FF, $00, $00, $01, $01, $01, $00, $00, $FF, $FF
+end 
+
+ data yoyoYvelocityfracTable
+ $00, $00, $80, $00, $80, $00, $00, $00, $80, $00, $80, $00
+end
+
+ data player4xTable
+ PXLEFT, PXLEFT, PXCENTER, PXCENTER, PXRIGHT, PXRIGHT
+end
+
+ data player4yTable
+ PYLOW, PYHIGH
+end
+
  ;With the multisprite kernel, the playfield is stored in ROM, so I'm putting it up here with the other constants.
 ;The playfield is the grid of blocks you'll see on the screen.
 ;Actually, Roothless is the square in the center of the playfield, to reduce sprite flickering...
@@ -204,7 +257,7 @@ _boot
 
 _gameOverLoop
 
- COLUBK = $42 ; set the background color.
+ COLUBK = GAMEOVERCOLOR ; set the background color.
 
  TextTimer = TextTimer + 1 ; Increment the text timer.
  if TextTimer = 255 then TextIndex = TextIndex + 12 ; Advance to the next string if the text timer is 255.
@@ -234,10 +287,11 @@ _startGame
  AUDC0 = 0 : AUDC1 = 0
  AUDF0 = 0 : AUDF1 = 0
  a = 0 : b = 0 : c = 0 : d = 0 : e = 0 : f = 0 : g = 0 : h = 0 : i = 0 : j = 0 : k = 0 : l = 0 : m = 0 : n = 0 : o = 0 : p = 0 : q = 0 : r = 0 : myLives = 3
- previousPositionFiredAt = $FF : u = 0 : v = 0 : w = 0 : x = 0
- y = 0 : z = 0
+ previousPositionFiredAt = $FF : u = 0 : freezeTimer = 0 : w = 0 : x = 0
+ TextTimer = 0
 
  score = 0
+
 
  ; Player and enemy sprite data.
 
@@ -281,7 +335,7 @@ end
 ;Player 3 is the guards(!) that straddle Roothless on the left and right. Defaults looking up
  gosub _sr_player3direction ; See _sr_player3direction for player 3 definitions
 
-;Player 4 is the guard the follows the player around (TODO?).
+;Player 4 is a powerup. It'll be defined on the fly.
 
 ;Player 5 is not actually a player, but a hack to give me a lives bar without a minikernel.
  player5:
@@ -298,7 +352,7 @@ end
  if switchleftb then bit2_isAbigail{2} = 1 else bit2_isAbigail{2} = 0
 
 ;Set the initial background color and color of the score font.
- COLUBK = $08
+ COLUBK = BGCOLOR
  scorecolor = $00
 
 ;Set initial sprite positions and speeds.
@@ -311,16 +365,19 @@ end
  ;We'll use rand to randomize the guards' starting positions.
 
  ;Guard 1 starting position
- player1x = $44 + rand/8
+ player1x = $44 + (rand&31) ; Bitwise and to limit the range of rand from $00 to $20. This is quicker (takes fewer cycles) than dividing rand by 8.
  player1y = $40
 
  ;Guard 2 starting position
- player2x = $44 + rand/8 ;Center X is $54
+ player2x = $44 + (rand&31) ;Center X is $54
  player2y = $20 
 
  ;Polyguard 3 (The guard on both sides is the same sprite) starting position
  player3x = $44 
- player3y = $20 + rand/8 ;Center Y is $30
+ player3y = $20 + (rand&31) ;Center Y is $30
+
+ ;Hide the powerup, initially.
+ player4x = $00
 
  ;Lives counter position
  player5x = $0A
@@ -348,14 +405,18 @@ _beginFrame
 
 
  ;These colors need to be set every frame, as do the values of each NUSIZx we care about.
- COLUBK = $08
+ COLUBK = BGCOLOR
 
  ; Sprite colors must be set every frame with this kernel.
  ; Set the player's color...
  if bit2_isAbigail{2} then COLUP0 = $9C else COLUP0 = $2A
 
  ; The others need their colors set manually.
- _COLUP1 = $16 : COLUP2 = $F4 : COLUP3 = $66 : COLUP5 = $40
+
+ ; A side-effect of this kernel is that the colors need to be set inside the loop or they get "lost". We'll take advantage of this...
+ if freezeTimer < 64 then _COLUP1 = $16 : COLUP2 = $F4 : COLUP3 = $66 else _COLUP1 = $92 : COLUP2 = $92 : COLUP3 = $92
+
+ COLUP5 = $40
 
  ; NUSIx settings for each player, where applicable.
  NUSIZ3 = $02 ; 0 == don't change missile, 4 == 2 medium-spaced (origins are 0x20 units apart) copies of player 3
@@ -365,6 +426,7 @@ _beginFrame
  
  if bit5_blockPreviousPosition{5} then TextIndex = moveAwayErrorStringOffset else TextIndex = gameTitleStringOffset ;If the previous position is blocked, tell the player to move; else just have the title displayed by the text minikernel while the game is active. 
  ;We can display other things, if we want... as long as we have the space to store them in ROM.
+
 
  ;===
  ;Yoyo
@@ -400,23 +462,85 @@ _end_yoyoMovement
  ;Otherwise, we'll update the previous firing position to the current one, then unblock it.
  if previousPositionFiredAt = playerPosition then bit5_blockPreviousPosition{5} = 1 else previousPositionFiredAt = playerPosition : bit5_blockPreviousPosition{5} = 0
 
+ ;====
+ ;Powerup creation
+ ;====
+ ;Now, let's roll the RNG dice to see if a powerup should appear...
+ temp1 = (rand&7) ; Range from 0 to 7; this is a bitwise and operation.
+ 
+ ;We'll give it a (1/8) * (6/8) chance, a bit under 10%.
+ if temp1 <> 0 then goto _skip_updatePreviousPosition
+
+ temp1 = (rand&7)
+ if temp1 > 5 then goto _skip_updatePreviousPosition
+ ;Otherwise, this is a number between 0 to 6, so we can place the powerup accordingly.
+ player4x = player4xTable[temp1]
+
+ temp2 = temp1 & 1
+ player4y = player4yTable[temp2] ;Just take the last bit into account here.
+
+ powerupType = (rand&3) ; 3 types of powerups? Eventually?
+
+ bit4_powerupActive{4} = 1
+
+ COLUP4 = $9F
+ player4:
+ %01011010
+ %10100101 
+ %01011010
+ %10111101
+ %10111101
+ %01011010
+ %10100101
+ %01011010
+end
+
+
+ ;====
+ ;End Powerup Creation
+ ;====
 _skip_updatePreviousPosition
+
 
  ;If the yoyo is touching any of the guards (the virtual sprites), return the yoyo to the player, then decrement lives.
  ;The fact that the guard we run into specifically doesn't matter is actually helpful, because it saves us from checking coordinates of virtual sprites.
- if collision(player1, ball) then callmacro returnYoyoToPlayer : yoyoXvelocity = 0 : yoyoYvelocity = 0 : myLives = myLives - 1 : callmacro soundInitC1 10 6 16 8 
- if myLives = 0 then player5y = 0 : TextIndex = gameOverStringOffset : goto _gameOverLoop ; end the game if we're out of lives.
+
+ ;Skip this section if the ball and player1 are not colliding. Note that "player1" here is actually any of the non-player0 sprites.
+ if !collision(player1, ball) then goto _skip_player1BallCollision
+
+ ;Powerup collision code:
+ if !bit4_powerupActive{4} then goto _skip_powerup
+ ;If we collided with the powerup, then we should deactivate it, set the freeze timer to 255, color it to the background color, and move the player 4 sprite out of the way so it can't collide with us again.
+ if bally > GUARDTOP || bally < GUARDBOTTOM then bit4_powerupActive{4} = 0 : freezeTimer = 255 : player4x = $08 : COLUP4 = BGCOLOR : callmacro soundInitC0 2 4 9 8 : goto _skip_player1BallCollision
+_skip_powerup
+
+
+ ;Guard collision code:
+ ;if bally <= GUARDTOP && bally >= GUARDBOTTOM then 
+ callmacro returnYoyoToPlayer : yoyoXvelocity = 0 : yoyoYvelocity = 0 : myLives = myLives - 1 : callmacro soundInitC1 10 6 16 8
+ ;Check for a game over now.
+ if myLives = 0 then player5y = 0 : TextIndex = gameOverStringOffset : COLUP4 = GAMEOVERCOLOR : goto _gameOverLoop ; end the game if we're out of lives.
+
+_skip_player1BallCollision
 
 
  ;After all that, if we're touching the yoyo, pick it up.
  ;We check this here so that we can pick up the yoyo even if the fire button is being held down.
  if collision(ball, player0) && yoyoCooldown = 0 then gosub _sr_movePlayer : bit0_isYoyoDeployed{0} = 0 : bit3_yoyoRetract{3} = 0 
-
- ;We'd probably check if the game was over at this point, but game overs aren't implemented yet.
-
  ;====
  ;Done with Yoyo
  ;====
+
+
+ ;====
+ ;Powerup placement and incrementing.
+ ;====
+
+ ;Decrement the freeze timer.
+ if freezeTimer > 0 then freezeTimer = freezeTimer - 1
+
+ ;In order to prevent a ton of flicker, the powerups won't appear on the same scanline as any of the guards.
+ ;Also, they won't appear in the center, to save space and to keep the number of positions a power of 2.
 
  ;===
  ;Player Movement
@@ -445,7 +569,7 @@ _skip_movePlayerLeft
  ballx  = player0x + 4
  bally = player0y - 4
 
- cooldown = 8 ; set the movement cooldown to 5 frames.
+ cooldown = 8 ; set the movement cooldown to 8 frames.
 
 _end_setPlayerPosition
  ;====
@@ -455,7 +579,7 @@ _end_setPlayerPosition
  ;===
  ;Enemy AI
  ;===
-
+ if freezeTimer > 0 then goto _end_enemyAI
  if player1x >= $64 then bitX_isGuardFacingLeft{0} = 1
  if player1x <= $44 then bitX_isGuardFacingLeft{0} = 0 
  if bitX_isGuardFacingLeft{0} then guard1x = guard1x - guardSpeed : _NUSIZ1 = $08 else guard1x = guard1x + guardSpeed : _NUSIZ1 = $00
@@ -468,6 +592,8 @@ _end_setPlayerPosition
  if player3y <= $20 then bitX_isGuardFacingLeft{2} = 0
  if bitX_isGuardFacingLeft{2} then guard3y = guard3y - guardSpeed else guard3y = guard3y + guardSpeed
  gosub _sr_player3direction 
+_end_enemyAI
+
  ;====
  ;Done with enemies
  ;====
@@ -501,30 +627,6 @@ _end_setPlayerPosition
 
  ; I used to have a lot of branching logic here, but it's actually way more efficient to have this data all in tables.
  ; the n-th player position corresponds to the n-th value in each table.
-
- data player0xTable
- XPOS2,  XPOS3,  XPOS4,  XPOS4, XPOS4, XPOS3, XPOS2, XPOS1, XPOS0, XPOS0, XPOS0, XPOS1
-end
-
- data player0yTable
- YPOS0, YPOS0, YPOS1, YPOS2, YPOS3, YPOS4, YPOS4, YPOS4, YPOS3, YPOS2, YPOS1, YPOS0
-end
-
- data yoyoXvelocityintTable
- $00, $FF, $FF, $FF, $FF, $FF, $00, $00, $01, $01, $01, $00
-end
- 
- data yoyoXvelocityfracTable
- $00, $8C, $00, $00, $00, $8C, $00, $80, $00, $00, $00, $80
-end
-
- data yoyoYvelocityintTable
- $FF, $FF, $FF, $00, $00, $01, $01, $01, $00, $00, $FF, $FF
-end 
-
- data yoyoYvelocityfracTable
- $00, $00, $80, $00, $80, $00, $00, $00, $80, $00, $80, $00
-end
 
 _sr_movePlayer
  ; direct placement of "playerPosition" into the brackets seems to make it not compile. This might be a bug with bB...?
@@ -564,7 +666,8 @@ _player3faceUp
 end
  return
 
- inline text12b.asm
+ inline text12b_mod.asm ;text12b_mod is just like text12b in this same repo, except with unneeded characters removed (numbers and some punctuation) to save space in the final binary.
+ ; The numbers have all been removed. if you want to add them back in, edit text12b_mod, but beware: the game won't fit in 4k.
 
  inline text12a.asm
 
