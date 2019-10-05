@@ -1,11 +1,9 @@
  rem Generated 8/29/2019 9:06:07 PM by Visual bB Version 1.0.0.568
  rem **********************************
- rem *AAA's Revenge                      *
- rem *A remake of the Neopets game, for the Atari 2600! *
+ rem * AAA's Revenge                      *
+ rem * A remake of the Neopets game, for the Atari 2600! *
  rem * Can you get to 1000 points? At least this version shouldn't crash when you get there... *
  rem * by /u/macosten                 *
- rem *<contact info>                  *
- rem *<license>                       *
  rem **********************************
 
  set kernel multisprite
@@ -16,10 +14,10 @@
  ;This takes up a good bit of space, though!
  ;set debug cyclescore
  
-
- ; This game uses the text minikernel by Karl G.
+ ; This game uses the text minikernel by Karl G. Don't try compiling this file without the minikernel's files in the same directory.
 
  ; RAM was not a limiting factor of this game, so I didn't need to use any special nibble macros or anything like that.
+ ; One of my design constraints is sticking to a maximum size of 4k. If you fork this game, you might not care, but beware that some things may need to be bankswitched explicitly if we increase the ROM size.
 
  ;===
  ; Macros
@@ -132,7 +130,7 @@ end
 
  ;TextIndex = gameOverStringOffset ;Setting TextIndex will change the text displayed.
  ;===
- ; Text kernel end
+ ; Text kernel stuff end
  ;===
 
  ;===
@@ -190,7 +188,9 @@ end
 end
 ; The playfield itself is mirrored to save space... this is done by the multisprite kernel itself.
 
-
+ ;===
+ ;Boot Landing
+ ;===
 _boot
 
  drawscreen ;Draw the screen to avoid going over 262 on reset... whatever that means. To be honest, I just saw this in a lot of other programs.
