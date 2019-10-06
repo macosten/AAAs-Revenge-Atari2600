@@ -475,7 +475,7 @@ _end_yoyoMovement
 
  if rand&1 = 1 then player4y = PYLOW else player4y = PYHIGH
 
- powerupType = rand&3 ; 3 types of powerups? Eventually?
+ powerupType = rand&3 ; 4 types of powerups? Eventually?
 
  bit4_powerupActive{4} = 1
 
