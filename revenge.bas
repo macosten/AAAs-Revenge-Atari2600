@@ -378,6 +378,7 @@ end
 
  ;Hide the powerup, initially.
  player4x = $00
+ COLUP4 = BGCOLOR
 
  ;Lives counter position
  player5x = $0A
@@ -511,7 +512,7 @@ _skip_updatePreviousPosition
  ;Powerup collision code:
  if !bit4_powerupActive{4} then goto _skip_powerup
  ;If we collided with the powerup, then we should deactivate it, set the freeze timer to 255, color it to the background color, and move the player 4 sprite out of the way so it can't collide with us again.
- if bally > GUARDTOP || bally < GUARDBOTTOM then bit4_powerupActive{4} = 0 : freezeTimer = 255 : player4x = $08 : COLUP4 = BGCOLOR : callmacro soundInitC0 2 4 9 8 : goto _skip_player1BallCollision
+ if bally > GUARDTOP || bally < GUARDBOTTOM then bit4_powerupActive{4} = 0 : freezeTimer = 255 : player4x = $08 : COLUP4 = BGCOLOR : callmacro soundInitC0 2 4 12 8 : goto _skip_player1BallCollision
 _skip_powerup
 
 
