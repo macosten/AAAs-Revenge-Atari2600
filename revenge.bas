@@ -205,11 +205,7 @@ end
 end
 
  data player4xTable
- PXLEFT, PXLEFT, PXCENTER, PXCENTER, PXRIGHT, PXRIGHT
-end
-
- data player4yTable
- PYLOW, PYHIGH
+ PXLEFT, PXCENTER, PXRIGHT
 end
 
  ;With the multisprite kernel, the playfield is stored in ROM, so I'm putting it up here with the other constants.
@@ -404,7 +400,6 @@ _beginFrame
  ;Frame Upkeep
  ;===
 
-
  ;These colors need to be set every frame, as do the values of each NUSIZx we care about.
  COLUBK = BGCOLOR
 
@@ -466,21 +461,21 @@ _end_yoyoMovement
  ;====
  ;Powerup creation
  ;====
+
+
  ;Now, let's roll the RNG dice to see if a powerup should appear...
- temp1 = (rand&7) ; Range from 0 to 7; this is a bitwise and operation.
- 
- ;We'll give it a (1/8) * (6/8) chance, a bit under 10%.
- if temp1 <> 0 then goto _skip_updatePreviousPosition
 
- temp1 = (rand&7)
- if temp1 > 5 then goto _skip_updatePreviousPosition
+ ;We'll give it a (1/8) * (3/4) chance, a bit under 10%.
+ if rand&7 <> 0 then goto _skip_updatePreviousPosition
+
+ temp2  = rand&3
+ if temp2 = 3 then goto _skip_updatePreviousPosition
  ;Otherwise, this is a number between 0 to 6, so we can place the powerup accordingly.
- player4x = player4xTable[temp1]
+ player4x = player4xTable[temp2]
 
- temp2 = temp1 & 1
- player4y = player4yTable[temp2] ;Just take the last bit into account here.
+ if rand&1 = 1 then player4y = PYLOW else player4y = PYHIGH
 
- powerupType = (rand&3) ; 3 types of powerups? Eventually?
+ powerupType = rand&3 ; 3 types of powerups? Eventually?
 
  bit4_powerupActive{4} = 1
 
