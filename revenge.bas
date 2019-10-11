@@ -103,11 +103,13 @@ end
 
  dim previousPositionFiredAt = t
 
- dim powerupType = u
+ dim powerupType = u 
 
  dim freezeTimer = v
 
- ;  W X are all free.
+ dim rand16 = w
+
+ ; X is free.
  
  ;===
  ;Text Minikernel Stuff
@@ -203,6 +205,10 @@ end
 
  data yoyoYvelocityfracTable
  $00, $00, $80, $00, $80, $00, $00, $00, $80, $00, $80, $00
+end
+
+ data player4xTable
+ PXLEFT, PXCENTER, PXRIGHT
 end
 
  ;With the multisprite kernel, the playfield is stored in ROM, so I'm putting it up here with the other constants.
@@ -409,13 +415,11 @@ _beginFrame
  ; A side-effect of this kernel is that the colors need to be set inside the loop or they get "lost". We'll take advantage of this...
  if freezeTimer < 64 then _COLUP1 = $16 : COLUP2 = $F4 : COLUP3 = $66 else _COLUP1 = $92 : COLUP2 = $92 : COLUP3 = $92
 
- COLUP5 = $40
-
  ; NUSIx settings for each player, where applicable.
  NUSIZ3 = $02 ; 0 == don't change missile, 4 == 2 medium-spaced (origins are 0x20 units apart) copies of player 3
  ; This will make them move identically, which is a little meh, but it will also mean they won't flicker, which is good...
  
- NUSIZ5 = livesNUSIZTable[myLives]
+ if myLives > 3 then NUSIZ5 = 3 : COLUP5 = $C6 else NUSIZ5 = livesNUSIZTable[myLives] : COLUP5 = $40
  
  if bit5_blockPreviousPosition{5} then TextIndex = moveAwayErrorStringOffset else TextIndex = gameTitleStringOffset ;If the previous position is blocked, tell the player to move; else just have the title displayed by the text minikernel while the game is active. 
  ;We can display other things, if we want... as long as we have the space to store them in ROM.
@@ -464,14 +468,14 @@ _end_yoyoMovement
 
  ;We'll give it a (1/8) * (3/4) chance, a bit under 10%.
  if rand&7 <> 0 then goto _skip_updatePreviousPosition
- if rand&3 = 3 then goto _skip_updatePreviousPosition
 
- ;The powerup will be as far away from the player as possible.
+ temp1 = rand&3
+ if temp1 = 3 then goto _skip_updatePreviousPosition
+
+ ;The powerup will try to guarantee it's on the opposite side of the player (top/bottom).
  if player0y > CENTERY then player4y = PYLOW else player4y = PYHIGH
- if player0x = XPOS2 then player4x = PXCENTER : goto _end_powerupPlacement
- if player0x > XPOS2 then player4x = PXLEFT else player4x = PXRIGHT
+ player4x = player4xTable[temp1] ;Since this will be a number from 0 to 2, the previous RNG call will also be used to check which X position we should place the powerup.
 
-_end_powerupPlacement
  powerupType = rand&1 ; Maybe someday I'll implement 4 types of powerups? Eventually?
 
  bit4_powerupActive{4} = 1
