@@ -116,7 +116,7 @@ end
  dim TextIndex = z ;For the Text Minikernel.
 
  data text_strings
- __A, __A, __A, __S, _sp, __R, __E, __V, __E, __N, __G, __E ;Each line must have 12 characters.
+ __A, __V, __I, __N, __R, __O, __O, __V, __E, __N, __G, __E ;Each line must have 12 characters.
  __B, __Y, _sp, __M, __A, __C, __O, __S, __T, __E, __N, _ex
  __U, __P,  _sp, __T, __O, _sp, __S, __T, __A, __R, __T, _sp
  __G, __A, __M, __E, _sp, __O, __V, __E, __R, _pd,  _pd, _pd
@@ -179,6 +179,7 @@ end
 
  ;Powerup types and colors.
  const PSNOWFLAKE = 0
+ const PCOIN = 1
 
  data player0xTable
  XPOS2,  XPOS3,  XPOS4,  XPOS4, XPOS4, XPOS3, XPOS2, XPOS1, XPOS0, XPOS0, XPOS0, XPOS1
@@ -202,10 +203,6 @@ end
 
  data yoyoYvelocityfracTable
  $00, $00, $80, $00, $80, $00, $00, $00, $80, $00, $80, $00
-end
-
- data player4xTable
- PXLEFT, PXCENTER, PXRIGHT
 end
 
  ;With the multisprite kernel, the playfield is stored in ROM, so I'm putting it up here with the other constants.
@@ -467,18 +464,19 @@ _end_yoyoMovement
 
  ;We'll give it a (1/8) * (3/4) chance, a bit under 10%.
  if rand&7 <> 0 then goto _skip_updatePreviousPosition
+ if rand&3 = 3 then goto _skip_updatePreviousPosition
 
- temp2  = rand&3
- if temp2 = 3 then goto _skip_updatePreviousPosition
- ;Otherwise, this is a number between 0 to 6, so we can place the powerup accordingly.
- player4x = player4xTable[temp2]
+ ;The powerup will be as far away from the player as possible.
+ if player0y > CENTERY then player4y = PYLOW else player4y = PYHIGH
+ if player0x = XPOS2 then player4x = PXCENTER : goto _end_powerupPlacement
+ if player0x > XPOS2 then player4x = PXLEFT else player4x = PXRIGHT
 
- if rand&1 = 1 then player4y = PYLOW else player4y = PYHIGH
-
- powerupType = rand&3 ; 4 types of powerups? Eventually?
+_end_powerupPlacement
+ powerupType = rand&1 ; Maybe someday I'll implement 4 types of powerups? Eventually?
 
  bit4_powerupActive{4} = 1
 
+ if powerupType = PCOIN then goto _coinPowerup
  COLUP4 = $9F
  player4:
  %01011010
@@ -489,6 +487,19 @@ _end_yoyoMovement
  %01011010
  %10100101
  %01011010
+end
+ goto _skip_updatePreviousPosition
+_coinPowerup
+ COLUP4 = $FC
+ player4:
+ %01111110
+ %11000011
+ %10111101
+ %10111101
+ %10111101
+ %10111101
+ %11000011
+ %01111110
 end
 
 
@@ -507,7 +518,7 @@ _skip_updatePreviousPosition
  ;Powerup collision code:
  if !bit4_powerupActive{4} then goto _skip_powerup
  ;If we collided with the powerup, then we should deactivate it, set the freeze timer to 255, color it to the background color, and move the player 4 sprite out of the way so it can't collide with us again.
- if bally > GUARDTOP || bally < GUARDBOTTOM then bit4_powerupActive{4} = 0 : freezeTimer = 255 : player4x = $08 : COLUP4 = BGCOLOR : callmacro soundInitC0 2 4 12 8 : goto _skip_player1BallCollision
+ if bally > GUARDTOP || bally < GUARDBOTTOM then bit4_powerupActive{4} = 0 : gosub _sr_initPowerupEffect : player4x = $08 : COLUP4 = BGCOLOR : callmacro soundInitC0 2 4 12 8 : goto _skip_player1BallCollision
 _skip_powerup
 
 
@@ -660,6 +671,11 @@ _player3faceUp
  %01011010
  %01111110
 end
+ return
+
+_sr_initPowerupEffect
+ if powerupType = PSNOWFLAKE then freezeTimer = 255
+ if powerupType = PCOIN then score = score + 5
  return
 
  inline text12b_mod.asm ;text12b_mod is just like text12b in this same repo, except with unneeded characters removed (numbers and some punctuation) to save space in the final binary.

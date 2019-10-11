@@ -423,20 +423,6 @@ __I = * - text_data
     .byte %00100000
     .byte %01110000
     
-__J = * - text_data
-    .byte %00010000
-    .byte %00010000
-    .byte %00010000
-    .byte %01010000
-    .byte %00100000
-
-__K = * - text_data
-    .byte %01010000
-    .byte %01010000
-    .byte %01100000
-    .byte %01010000
-    .byte %01010000
-
 __L = * - text_data
     .byte %01000000
     .byte %01000000
@@ -471,13 +457,6 @@ __P = * - text_data
     .byte %01100000
     .byte %01000000
     .byte %01000000
-    
-__Q = * - text_data
-    .byte %00100000
-    .byte %01010000
-    .byte %01010000
-    .byte %01010000
-    .byte %00110000
     
 __R = * - text_data
     .byte %01100000
@@ -520,13 +499,6 @@ __W = * - text_data
     .byte %01110000
     .byte %01110000
     .byte %01010000
-
-__X = * - text_data
-    .byte %01010000
-    .byte %01010000
-    .byte %00100000
-    .byte %01010000
-    .byte %01010000
     
 __Y = * - text_data
     .byte %01010000
@@ -534,13 +506,6 @@ __Y = * - text_data
     .byte %00100000
     .byte %00100000
     .byte %00100000
-    
-__Z = * - text_data
-    .byte %01110000
-    .byte %00010000
-    .byte %00100000
-    .byte %01000000
-    .byte %01110000
     
 _sp = * - text_data
     .byte %00000000
@@ -635,20 +600,6 @@ right_text
     .byte %00000010
     .byte %00000010
     .byte %00000111
-    
-; J
-    .byte %00000001
-    .byte %00000001
-    .byte %00000001
-    .byte %00000101
-    .byte %00000010
-
-; K
-    .byte %00000101
-    .byte %00000101
-    .byte %00000110
-    .byte %00000101
-    .byte %00000101
 
 ; L
     .byte %00000100
@@ -684,13 +635,6 @@ right_text
     .byte %00000110
     .byte %00000100
     .byte %00000100
-    
-; Q
-    .byte %00000010
-    .byte %00000101
-    .byte %00000101
-    .byte %00000101
-    .byte %00000011
     
 ; R
     .byte %00000110
@@ -733,13 +677,6 @@ right_text
     .byte %00000111
     .byte %00000111
     .byte %00000101
-
-; X
-    .byte %00000101
-    .byte %00000101
-    .byte %00000010
-    .byte %00000101
-    .byte %00000101
     
 ; Y
     .byte %00000101
@@ -747,13 +684,6 @@ right_text
     .byte %00000010
     .byte %00000010
     .byte %00000010
-    
-; Z
-    .byte %00000111
-    .byte %00000001
-    .byte %00000010
-    .byte %00000100
-    .byte %00000111
 
 ; space
     .byte %00000000
