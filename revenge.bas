@@ -182,6 +182,7 @@ end
  ;Powerup types and colors.
  const PSNOWFLAKE = 0
  const PCOIN = 1
+ const PLIFE = 2
 
  data player0xTable
  XPOS2,  XPOS3,  XPOS4,  XPOS4, XPOS4, XPOS3, XPOS2, XPOS1, XPOS0, XPOS0, XPOS0, XPOS1
@@ -469,18 +470,20 @@ _end_yoyoMovement
  ;We'll give it a (1/8) * (3/4) chance, a bit under 10%.
  if rand&7 <> 0 then goto _skip_updatePreviousPosition
 
- temp1 = rand&3
+ temp1 = rand/64 ;Equivalent to (rand&3); This is a division to heed a warning that using only ands or only divisions can cause patterns sometimes... or something like that.
  if temp1 = 3 then goto _skip_updatePreviousPosition
 
- ;The powerup will try to guarantee it's on the opposite side of the player (top/bottom).
+ ;The powerup will try to guarantee it's on the opposite side of the player (top/bottom). This also ensures that a powerup doesn't spawn in between the player and the yoyo.
  if player0y > CENTERY then player4y = PYLOW else player4y = PYHIGH
  player4x = player4xTable[temp1] ;Since this will be a number from 0 to 2, the previous RNG call will also be used to check which X position we should place the powerup.
 
- powerupType = rand&1 ; Maybe someday I'll implement 4 types of powerups? Eventually?
+ powerupType = rand&3 ; Maybe someday I'll implement 4 types of powerups? Eventually?
 
  bit4_powerupActive{4} = 1
 
  if powerupType = PCOIN then goto _coinPowerup
+ if powerupType = PLIFE then goto _lifePowerup
+ powerupType = PSNOWFLAKE ; If poweruptype ends up not matching a different value, set it to this one.
  COLUP4 = $9F
  player4:
  %01011010
@@ -504,6 +507,19 @@ _coinPowerup
  %10111101
  %11000011
  %01111110
+end
+ goto _skip_updatePreviousPosition
+_lifePowerup
+ COLUP4 = $40
+ player4:
+ %00111100
+ %01100110
+ %11100111
+ %10000001
+ %10000001
+ %11100111
+ %01100110
+ %00111100
 end
 
 
@@ -678,8 +694,9 @@ end
  return
 
 _sr_initPowerupEffect
- if powerupType = PSNOWFLAKE then freezeTimer = 255
+ if powerupType = PSNOWFLAKE then freezeTimer = 255 : guardSpeed = guardSpeed - 0.0234375 ; Slows the guards down enough to "undo" the last 6 hits.
  if powerupType = PCOIN then score = score + 5
+ if powerupType = PLIFE && myLives < 255 then myLives = myLives + 1 ;Not like you'd probably roll over your lives, but just in case you're overwriting memory/cheating, I'll check to make sure lives don't roll over.
  return
 
  inline text12b_mod.asm ;text12b_mod is just like text12b in this same repo, except with unneeded characters removed (numbers and some punctuation) to save space in the final binary.
