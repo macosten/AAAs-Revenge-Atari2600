@@ -394,13 +394,6 @@ __E = * - text_data
     .byte %01100000
     .byte %01000000
     .byte %01110000
-    
-__F = * - text_data
-    .byte %01110000
-    .byte %01000000
-    .byte %01100000
-    .byte %01000000
-    .byte %01000000
 
 __G = * - text_data
     .byte %00110000
@@ -408,26 +401,12 @@ __G = * - text_data
     .byte %01010000
     .byte %01010000
     .byte %00100000
-
-__H = * - text_data
-    .byte %01010000
-    .byte %01010000
-    .byte %01110000
-    .byte %01010000
-    .byte %01010000
     
 __I = * - text_data
     .byte %01110000
     .byte %00100000
     .byte %00100000
     .byte %00100000
-    .byte %01110000
-    
-__L = * - text_data
-    .byte %01000000
-    .byte %01000000
-    .byte %01000000
-    .byte %01000000
     .byte %01110000
     
 __M = * - text_data
@@ -492,13 +471,6 @@ __V = * - text_data
     .byte %01010000
     .byte %01010000
     .byte %00100000
-
-__W = * - text_data
-    .byte %01010000
-    .byte %01010000
-    .byte %01110000
-    .byte %01110000
-    .byte %01010000
     
 __Y = * - text_data
     .byte %01010000
@@ -572,13 +544,6 @@ right_text
     .byte %00000110
     .byte %00000100
     .byte %00000111
-    
-; F
-    .byte %00000111
-    .byte %00000100
-    .byte %00000110
-    .byte %00000100
-    .byte %00000100
 
 ; G
     .byte %00000011
@@ -586,26 +551,12 @@ right_text
     .byte %00000101
     .byte %00000101
     .byte %00000010
-
-; H
-    .byte %00000101
-    .byte %00000101
-    .byte %00000111
-    .byte %00000101
-    .byte %00000101
     
 ; I
     .byte %00000111
     .byte %00000010
     .byte %00000010
     .byte %00000010
-    .byte %00000111
-
-; L
-    .byte %00000100
-    .byte %00000100
-    .byte %00000100
-    .byte %00000100
     .byte %00000111
     
 ; M
@@ -670,13 +621,6 @@ right_text
     .byte %00000101
     .byte %00000101
     .byte %00000010
-
-; W
-    .byte %00000101
-    .byte %00000101
-    .byte %00000111
-    .byte %00000111
-    .byte %00000101
     
 ; Y
     .byte %00000101
