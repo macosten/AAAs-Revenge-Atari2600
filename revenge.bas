@@ -266,8 +266,7 @@ _gameOverLoop
  if joy0up then goto _startGame ; Start the game if the joystick button is pressed.
 
  ; Take care of any sounds that happen to still be playing.
- if channel0SoundTimer = 0 then AUDV0 = 0 else channel0SoundTimer = channel0SoundTimer - 1
- if channel1SoundTimer = 0 then AUDV1 = 0 else channel1SoundTimer = channel1SoundTimer - 1
+ gosub _sr_soundManager
 
  drawscreen
 
@@ -628,8 +627,7 @@ _end_enemyAI
  ;===
  ;Sound
  ;===
- if channel0SoundTimer = 0 then AUDV0 = 0 else channel0SoundTimer = channel0SoundTimer - 1
- if channel1SoundTimer = 0 then AUDV1 = 0 else channel1SoundTimer = channel1SoundTimer - 1
+ gosub _sr_soundManager
  ;===
  ;Done with sound
  ;===
@@ -699,8 +697,12 @@ _sr_initPowerupEffect
  if powerupType = PLIFE && myLives < 255 then myLives = myLives + 1 ;Not like you'd probably roll over your lives, but just in case you're overwriting memory/cheating, I'll check to make sure lives don't roll over.
  return
 
+_sr_soundManager
+ if channel0SoundTimer = 0 then AUDV0 = 0 else channel0SoundTimer = channel0SoundTimer - 1
+ if channel1SoundTimer = 0 then AUDV1 = 0 else channel1SoundTimer = channel1SoundTimer - 1
+ return
+
  inline text12b_mod.asm ;text12b_mod is just like text12b in this same repo, except with unneeded characters removed (numbers and some punctuation) to save space in the final binary.
  ; The numbers have all been removed. if you want to add them back in, edit text12b_mod, but beware: the game won't fit in 4k.
 
  inline text12a.asm
-
