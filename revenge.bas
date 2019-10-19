@@ -8,7 +8,6 @@
 
  set kernel multisprite
  set romsize 4k
- set optimization size
  
  ; Uncommenting the following line will replace the score with the approximate number of free cycles available in a given frame (+ or - 64).
  ;White is positive; red is negative. We don't want this number to be red (when I tested it out, it wasn't, but I did test it on an emulator).
@@ -16,7 +15,6 @@
  
  ; This game uses the text minikernel by Karl G. Don't try compiling this file without the minikernel's files in the same directory.
 
- ; RAM was not a limiting factor of this game, so I didn't need to use any special nibble macros or anything like that.
  ; One of my design constraints is sticking to a maximum size of 4k. If you fork this game, you might not care, but beware that some things may need to be bankswitched explicitly if we increase the ROM size.
 
  ;===
@@ -109,21 +107,40 @@ end
 
  dim rand16 = w
 
- ; X is free.
+ ;===
+ ;Advanced Sound Effect Stuff
+ ;===
+
+
+ dim ch0SoundID = missile0x
+
+ ;But this allows us to set the upper 5 bytes to be the sound counter, giving us sounds that can be up to 32 bytes long (more likely, 28, but we'll see).
+
+ dim ch0SoundCounter = x
  
+ const SNDNONE =  0
+ const SNDPOWERUP = 1
+ const SNDLOSELIFE = 2
+ const SNDGAMEOVER = 3
+ const SNDHITROOTHLESS = 4
+ const SNDRES1 = 5
+ const SNDRES2 = 6
+ const SNDRES3 = 7
+ 
+ ;Sets up a sound effect to be played (on channel 0) with the ID provided.
+ macro setupSFX 
+ ch0SoundID = {1}
+ ch0SoundCounter = 0
+ channel0SoundTimer = 1
+end
+
+
+
  ;===
  ;Text Minikernel Stuff
  ;===
  dim TextTimer = y 
  dim TextIndex = z ;For the Text Minikernel.
-
- data text_strings
- __A, __V, __I, __N, __R, __O, __O, __V, __E, __N, __G, __E ;Each line must have 12 characters.
- __B, __Y, _sp, __M, __A, __C, __O, __S, __T, __E, __N, _ex
- __U, __P,  _sp, __T, __O, _sp, __S, __T, __A, __R, __T, _sp
- __G, __A, __M, __E, _sp, __O, __V, __E, __R, _pd,  _pd, _pd
-  __M, __O, __V, __E, _sp, __A, __R, __O, __U, __N, __D, _ex
-end
 
  const gameTitleStringOffset = 0
  const byMacostenStringOffset = 12
@@ -212,6 +229,22 @@ end
  PXLEFT, PXCENTER, PXRIGHT
 end
 
+ data snd_powerup
+ 12,4,23
+ 4
+ 10,4,29
+ 4
+ 8,4,23
+ 4
+ 6,4,29
+ 4
+ 4,4,23
+ 4
+ 255 
+end
+
+
+
  ;With the multisprite kernel, the playfield is stored in ROM, so I'm putting it up here with the other constants.
 ;The playfield is the grid of blocks you'll see on the screen.
 ;Actually, Roothless is the square in the center of the playfield, to reduce sprite flickering...
@@ -286,7 +319,7 @@ _startGame
  AUDC0 = 0 : AUDC1 = 0
  AUDF0 = 0 : AUDF1 = 0
  a = 0 : b = 0 : c = 0 : d = 0 : e = 0 : f = 0 : g = 0 : h = 0 : i = 0 : j = 0 : k = 0 : l = 0 : m = 0 : n = 0 : o = 0 : p = 0 : q = 0 : r = 0 : myLives = 3
- previousPositionFiredAt = $FF : u = 0 : freezeTimer = 0 : w = 0 : x = 0
+ previousPositionFiredAt = $FF : u = 0 : freezeTimer = 0 : x = 0 
  TextTimer = 0
 
  score = 0
@@ -436,7 +469,7 @@ _beginFrame
  if bit5_blockPreviousPosition{5} && previousPositionFiredAt = playerPosition then goto _end_yoyoMovement
 
  ;The secondary check stops a bug in which the yoyo will not be caught if fire is held during collision.
- if joy0fire && yoyoCooldown = 0 then bit0_isYoyoDeployed{0} = 1 : yoyoCooldown = 8 : callmacro soundInitC0 2 4 14 8 ; The fact that holding down the spacebar can cause the cooldown to be nonzero when the yoyo is caught again could be undesirable, but probably won't matter. 
+ if joy0fire && yoyoCooldown = 0 then bit0_isYoyoDeployed{0} = 1 : yoyoCooldown = 8 : callmacro soundInitC1 2 4 14 8 ; The fact that holding down the spacebar can cause the cooldown to be nonzero when the yoyo is caught again could be undesirable, but probably won't matter. 
  
  ;This check should still be here just because it otherwise will cause the yoyo to jitter around.
  if !bit0_isYoyoDeployed{0} then goto _end_yoyoMovement
@@ -452,7 +485,7 @@ _end_yoyoMovement
  ;If the yoyo collided with the playfield, then it crashed into Roothless, so we get one point. Then, it should bounce back to us.
  ;Yes, Roothless is the two-by-two black square in the middle. What do you think this is, a fancy NES?
 
- if collision(ball, playfield) && !bit3_yoyoRetract{3} then score = score + 1 : bit3_yoyoRetract{3} = 1 : guardSpeed = guardSpeed + 0.00390625 : callmacro soundInitC0 2 4 9 8 else goto _skip_updatePreviousPosition
+ if collision(ball, playfield) && !bit3_yoyoRetract{3} then score = score + 1 : bit3_yoyoRetract{3} = 1 : guardSpeed = guardSpeed + 0.00390625 : callmacro soundInitC1 2 4 9 8 else goto _skip_updatePreviousPosition
  
  ;Now we'll check if this is the same position we fired the yoyo from last time.
  ;If it is, we'll block the current position; the player won't be able to fire a yoyo from there.
@@ -537,7 +570,7 @@ _skip_updatePreviousPosition
  ;Powerup collision code:
  if !bit4_powerupActive{4} then goto _skip_powerup
  ;If we collided with the powerup, then we should deactivate it, set the freeze timer to 255, color it to the background color, and move the player 4 sprite out of the way so it can't collide with us again.
- if bally > GUARDTOP || bally < GUARDBOTTOM then bit4_powerupActive{4} = 0 : gosub _sr_initPowerupEffect : player4x = $08 : COLUP4 = BGCOLOR : callmacro soundInitC0 2 4 12 8 : goto _skip_player1BallCollision
+ if bally > GUARDTOP || bally < GUARDBOTTOM then bit4_powerupActive{4} = 0 : gosub _sr_initPowerupEffect : player4x = $08 : COLUP4 = BGCOLOR : callmacro setupSFX SNDPOWERUP : goto _skip_player1BallCollision
 _skip_powerup
 
 
@@ -698,11 +731,62 @@ _sr_initPowerupEffect
  return
 
 _sr_soundManager
- if channel0SoundTimer = 0 then AUDV0 = 0 else channel0SoundTimer = channel0SoundTimer - 1
+
+ ;Channel 1 still only will be playing simple stuff, so we won't change its logic much.
  if channel1SoundTimer = 0 then AUDV1 = 0 else channel1SoundTimer = channel1SoundTimer - 1
+
+ ;Channel 0 is another story.
+ ;if channel0SoundTimer = 0 then AUDV0 = 0 else channel0SoundTimer = channel0SoundTimer - 1
+ 
+ ; Channel 0 sound effect management:
+ channel0SoundTimer = channel0SoundTimer - 1
+
+ ; if channel0SoundTimer is nonzero, then skip upating what sound is happening on channel 0.
+ if channel0SoundTimer > 0 then goto _skip_channel0SoundUpdate
+ 
+ if ch0SoundID <> SNDPOWERUP then goto _skip_sndpowerup
+ ;Load the sound counter into temp3.
+
+
+ ;Load either a V byte into temp4 or a 255, which is essentially the terminator. if we find that terminator, mute the channel.
+ temp4 = snd_powerup[ch0SoundCounter]
+ if temp4 = 255 then goto _clearCh0
+
+ ;Otherwise, load the next 2 bytes.
+ ch0SoundCounter = ch0SoundCounter + 1
+ temp5 = snd_powerup[ch0SoundCounter] : ch0SoundCounter = ch0SoundCounter + 1
+ temp6 = snd_powerup[ch0SoundCounter] : ch0SoundCounter = ch0SoundCounter + 1
+
+ ;Now initialize the channel with the new data.
+ temp2 = snd_powerup[ch0SoundCounter]
+ callmacro soundInitC0 temp4 temp5 temp6 temp2
+
+ ;Increment the counter one last time.
+ ch0SoundCounter = ch0SoundCounter + 1
+
+
+_skip_sndpowerup
+
+
+ goto _skip_channel0SoundUpdate
+
+ ;If we goto here, then clear (mute) the sound effect.
+_clearCh0
+ ch0SoundID = SNDNONE : AUDV0 = 0
+
+_skip_channel0SoundUpdate
  return
 
  inline text12b_mod.asm ;text12b_mod is just like text12b in this same repo, except with unneeded characters removed (numbers and some punctuation) to save space in the final binary.
  ; The numbers have all been removed. if you want to add them back in, edit text12b_mod, but beware: the game won't fit in 4k.
-
  inline text12a.asm
+
+ data text_strings
+ __A, __V, __I, __N, __R, __O, __O, __V, __E, __N, __G, __E ;Each line must have 12 characters.
+ __B, __Y, _sp, __M, __A, __C, __O, __S, __T, __E, __N, _ex
+ __U, __P,  _sp, __T, __O, _sp, __S, __T, __A, __R, __T, _sp
+ __G, __A, __M, __E, _sp, __O, __V, __E, __R, _pd,  _pd, _pd
+  __M, __O, __V, __E, _sp, __A, __R, __O, __U, __N, __D, _ex
+end
+
+
