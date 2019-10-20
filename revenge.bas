@@ -10,7 +10,7 @@
  set romsize 4k
 
  set optimization noinlinedata
- 
+
  ; Uncommenting the following line will replace the score with the approximate number of free cycles available in a given frame (+ or - 64).
  ;White is positive; red is negative. We don't want this number to be red (when I tested it out, it wasn't, but I did test it on an emulator).
  ;set debug cyclescore
@@ -29,14 +29,6 @@
  yoyoY = player0y - 4
 end
 
- ;Initializes a sound on channel 0 with the arguments <volume> <control number> <frequency> <duration>
- macro soundInitC0
- AUDV0 = {1}
- AUDC0 = {2}
- AUDF0 = {3}
- channel0SoundTimer = {4}
-end
-
  ;Initializes a sound on channel 1 with the arguments <volume> <control number> <frequency> <duration>
  macro soundInitC1
  AUDV1 = {1}
@@ -45,6 +37,22 @@ end
  channel1SoundTimer = {4}
 end
 
+ macro playSoundCh0
+ ;Load either a V byte into temp4 or a 0, which is the termination byte.
+ temp4 = {1}[ch0SoundCounter]
+ if temp4 = 0 then ch0SoundID = SNDNONE 
+ 
+ AUDV0 = temp4
+ ;If temp4 is 0 then mute the channel/set the sound ID to none. In either case, set AUDV0 to it and load the next two bytes (C, F)
+ ;Naturally, this will be garbage data if we just loaded a 0 in, but if we loaded a 0 in then we don't care about playing garbage sound because it's muted! (if this causes a crash somehow, I'll be surprised)
+ ch0SoundCounter = ch0SoundCounter + 1
+ AUDC0 = {1}[ch0SoundCounter] : ch0SoundCounter = ch0SoundCounter + 1
+ AUDF0 = {1}[ch0SoundCounter] : ch0SoundCounter = ch0SoundCounter + 1
+
+ ;Now, load the duation byte...
+ channel0SoundTimer = {1}[ch0SoundCounter] : ch0SoundCounter = ch0SoundCounter + 1
+ ;And that's it!
+end
 
 
  ; ===
@@ -113,17 +121,16 @@ end
  ;Advanced Sound Effect Stuff
  ;===
 
-
  dim ch0SoundID = missile0x
 
  dim ch0SoundCounter = x
  
  const SNDNONE =  0
  const SNDPOWERUP = 1
- const SNDLOSELIFE = 2
- const SNDGAMEOVER = 3
- const SNDHITROOTHLESS = 4
- const SNDTHROWYOYO = 5
+ const SNDTHROWYOYO = 2
+ const SNDHITROOTHLESS = 3
+ const SNDGAMEOVER = 4
+ const SNDLOSELIFE = 5
  const SNDRES2 = 6
  const SNDRES3 = 7
  
@@ -266,11 +273,8 @@ _startGame
  ; =========================
 
  ; Initialize relevant variables.
- AUDV0 = 0 : AUDV1 = 0
- AUDC0 = 0 : AUDC1 = 0
- AUDF0 = 0 : AUDF1 = 0
  a = 0 : b = 0 : c = 0 : d = 0 : e = 0 : f = 0 : g = 0 : h = 0 : i = 0 : j = 0 : k = 0 : l = 0 : m = 0 : n = 0 : o = 0 : p = 0 : q = 0 : r = 0 : myLives = 3
- previousPositionFiredAt = $FF : u = 0 : freezeTimer = 0 : x = 0 
+ previousPositionFiredAt = $FF : u = 0 : freezeTimer = 0
  TextTimer = 0
 
  score = 0
@@ -335,7 +339,6 @@ end
  if switchleftb then bit2_isAbigail{2} = 1 else bit2_isAbigail{2} = 0
 
 ;Set the initial background color and color of the score font.
- COLUBK = BGCOLOR
  scorecolor = $00
 
 ;Set initial sprite positions and speeds.
@@ -420,7 +423,7 @@ _beginFrame
  if bit5_blockPreviousPosition{5} && previousPositionFiredAt = playerPosition then goto _end_yoyoMovement
 
  ;The secondary check stops a bug in which the yoyo will not be caught if fire is held during collision.
- if joy0fire && yoyoCooldown = 0 then bit0_isYoyoDeployed{0} = 1 : yoyoCooldown = 8 : callmacro soundInitC1 2 4 14 8 ; The fact that holding down the spacebar can cause the cooldown to be nonzero when the yoyo is caught again could be undesirable, but probably won't matter. 
+ if joy0fire && yoyoCooldown = 0 then bit0_isYoyoDeployed{0} = 1 : yoyoCooldown = 8 : callmacro setupSFX SNDTHROWYOYO ; The fact that holding down the spacebar can cause the cooldown to be nonzero when the yoyo is caught again could be undesirable, but probably won't matter. 
  
  ;This check should still be here just because it otherwise will cause the yoyo to jitter around.
  if !bit0_isYoyoDeployed{0} then goto _end_yoyoMovement
@@ -436,7 +439,7 @@ _end_yoyoMovement
  ;If the yoyo collided with the playfield, then it crashed into Roothless, so we get one point. Then, it should bounce back to us.
  ;Yes, Roothless is the two-by-two black square in the middle. What do you think this is, a fancy NES?
 
- if collision(ball, playfield) && !bit3_yoyoRetract{3} then score = score + 1 : bit3_yoyoRetract{3} = 1 : guardSpeed = guardSpeed + 0.00390625 : callmacro soundInitC1 2 4 9 8 else goto _skip_updatePreviousPosition
+ if collision(ball, playfield) && !bit3_yoyoRetract{3} then score = score + 1 : bit3_yoyoRetract{3} = 1 : guardSpeed = guardSpeed + 0.00390625 : callmacro setupSFX SNDHITROOTHLESS else goto _skip_updatePreviousPosition
  
  ;Now we'll check if this is the same position we fired the yoyo from last time.
  ;If it is, we'll block the current position; the player won't be able to fire a yoyo from there.
@@ -451,7 +454,7 @@ _end_yoyoMovement
  ;Now, let's roll the RNG dice to see if a powerup should appear...
 
  ;We'll give it a (1/8) * (3/4) chance, a bit under 10%.
- ;if rand&7 <> 0 then goto _skip_updatePreviousPosition
+ if rand&7 <> 0 then goto _skip_updatePreviousPosition
 
  temp1 = rand/64 ;Equivalent to (rand&3); This is a division to heed a warning that using only ands or only divisions can cause patterns sometimes... or something like that.
  if temp1 = 3 then goto _skip_updatePreviousPosition
@@ -467,7 +470,6 @@ _end_yoyoMovement
  if powerupType = PCOIN then goto _coinPowerup
  if powerupType = PLIFE then goto _lifePowerup
  powerupType = PSNOWFLAKE ; If poweruptype ends up not matching a different value, set it to this one.
- COLUP4 = $9F
  player4:
  %01011010
  %10100101 
@@ -478,9 +480,8 @@ _end_yoyoMovement
  %10100101
  %01011010
 end
- goto _skip_updatePreviousPosition
+ goto _set_powerupColor
 _coinPowerup
- COLUP4 = $FC
  player4:
  %01111110
  %11000011
@@ -491,9 +492,8 @@ _coinPowerup
  %11000011
  %01111110
 end
- goto _skip_updatePreviousPosition
+ goto _set_powerupColor
 _lifePowerup
- COLUP4 = $40
  player4:
  %00111100
  %01100110
@@ -505,11 +505,13 @@ _lifePowerup
  %00111100
 end
 
-
+_set_powerupColor
+ COLUP4 = powerupColorTable[powerupType]
  ;====
  ;End Powerup Creation
  ;====
 _skip_updatePreviousPosition
+
 
  ;If the yoyo is touching any of the guards (the virtual sprites), return the yoyo to the player, then decrement lives.
  ;The fact that the guard we run into specifically doesn't matter is actually helpful, because it saves us from checking coordinates of virtual sprites.
@@ -556,8 +558,7 @@ _skip_player1BallCollision
  ;===
 
  ; If the movement cooldown is more than 0, decrement it.
- if cooldown > 0 then cooldown = cooldown-1
- if cooldown > 0 then goto _end_setPlayerPosition ;Don't allow the player to move if the cooldown is nonzero.
+ if cooldown > 0 then cooldown = cooldown-1 : goto _end_setPlayerPosition ;Don't allow the player to move if the cooldown is nonzero.
 
  ;Don't bother checking for input if the yoyo is deployed.
  if bit0_isYoyoDeployed{0} then goto _end_setPlayerPosition
@@ -636,6 +637,28 @@ _end_enemyAI
  ; I used to have a lot of branching logic here, but it's actually way more efficient to have this data all in tables.
  ; the n-th player position corresponds to the n-th value in each table.
 
+_sr_soundManager
+
+ ;Channel 1 still only will be playing simple stuff, so we won't change its logic much.
+ if channel1SoundTimer = 0 then AUDV1 = 0 else channel1SoundTimer = channel1SoundTimer - 1
+
+ ;Channel 0 is another story.
+
+ ; Channel 0 sound effect management:
+ channel0SoundTimer = channel0SoundTimer - 1
+
+ ; if channel0SoundTimer is nonzero, then skip upating what sound is happening on channel 0.
+ if channel0SoundTimer > 0 then goto _skip_channel0SoundUpdate
+ 
+;Otherwise, which sound do we want to play?
+ if ch0SoundID = SNDPOWERUP then callmacro playSoundCh0 snd_powerup
+ if ch0SoundID = SNDTHROWYOYO then callmacro playSoundCh0 snd_yoyoThrow
+ if ch0SoundID = SNDHITROOTHLESS then callmacro playSoundCh0 snd_hitRoothless
+
+_skip_channel0SoundUpdate
+ return
+
+
 _sr_movePlayer
  ; direct placement of "playerPosition" into the brackets seems to make it not compile. This might be a bug with bB...?
  ; Workaround: use "a" instead, which is what playerPosition is dim'd to.
@@ -680,48 +703,14 @@ _sr_initPowerupEffect
  if powerupType = PLIFE && myLives < 255 then myLives = myLives + 1 ;Not like you'd probably roll over your lives, but just in case you're overwriting memory/cheating, I'll check to make sure lives don't roll over.
  return
 
- macro playSoundCh0
- ;Load either a V byte into temp4 or a 0, which is the termination byte.
- temp4 = {1}[ch0SoundCounter]
- if temp4 = 0 then ch0SoundID = SNDNONE 
- 
- AUDV0 = temp4
- ;If temp4 is 0 then mute the channel/set the sound ID to none. In either case, set AUDV0 to it and load the next two bytes (C, F)
- ;Naturally, this will be garbage data if we just loaded a 0 in, but if we loaded a 0 in then we don't care about playing garbage sound because it's muted! (if this causes a crash somehow, I'll be surprised)
- ch0SoundCounter = ch0SoundCounter + 1
- AUDC0 = {1}[ch0SoundCounter] : ch0SoundCounter = ch0SoundCounter + 1
- AUDF0 = {1}[ch0SoundCounter] : ch0SoundCounter = ch0SoundCounter + 1
-
- ;Now, load the duation byte...
- channel0SoundTimer = {1}[ch0SoundCounter] : ch0SoundCounter = ch0SoundCounter + 1
- ;And that's it!
-end
-
-
-_sr_soundManager
-
- ;Channel 1 still only will be playing simple stuff, so we won't change its logic much.
- if channel1SoundTimer = 0 then AUDV1 = 0 else channel1SoundTimer = channel1SoundTimer - 1
-
- ;Channel 0 is another story.
-
- ; Channel 0 sound effect management:
- channel0SoundTimer = channel0SoundTimer - 1
-
- ; if channel0SoundTimer is nonzero, then skip upating what sound is happening on channel 0.
- if channel0SoundTimer > 0 then goto _skip_channel0SoundUpdate
- 
- if ch0SoundID = SNDPOWERUP then callmacro playSoundCh0 snd_powerup
-
-_skip_channel0SoundUpdate
- return
-
-
  ;====
  ;Data Tables
  ;===
 
-
+ ;At least 12 bytes are free here.
+ data powerupColorTable
+ $9F, $FC, $40
+end
  inline text12b_mod.asm ;text12b_mod is just like text12b in this same repo, except with unneeded characters removed (numbers and some punctuation) to save space in the final binary.
  ; The numbers have all been removed. if you want to add them back in, edit text12b_mod, but beware: the game won't fit in 4k.
  inline text12a.asm
@@ -737,6 +726,7 @@ end
  data yoyoXvelocityintTable
  $00, $FF, $FF, $FF, $FF, $FF, $00, $00, $01, $01, $01, $00
 end
+
  
  data yoyoXvelocityfracTable
  $00, $8C, $00, $00, $00, $8C, $00, $80, $00, $00, $00, $80
@@ -750,6 +740,7 @@ end
  $00, $00, $80, $00, $80, $00, $00, $00, $80, $00, $80, $00
 end
 
+
  data player0xTable
  XPOS2,  XPOS3,  XPOS4,  XPOS4, XPOS4, XPOS3, XPOS2, XPOS1, XPOS0, XPOS0, XPOS0, XPOS1
 end
@@ -757,6 +748,7 @@ end
  data player0yTable
  YPOS0, YPOS0, YPOS1, YPOS2, YPOS3, YPOS4, YPOS4, YPOS4, YPOS3, YPOS2, YPOS1, YPOS0
 end
+
 
  data player4xTable
  PXLEFT, PXCENTER, PXRIGHT
@@ -794,3 +786,21 @@ end
  4
  0 
 end
+
+ data snd_hitRoothless
+ 8,8,0
+ 2
+ 8,14,1
+ 2
+ 8,14,2
+ 2
+ 6,14,1
+ 2
+ 4,14,3
+ 2
+ 0
+end
+
+
+
+; One byte is free here...
