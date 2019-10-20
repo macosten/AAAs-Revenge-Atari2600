@@ -451,7 +451,7 @@ _end_yoyoMovement
  ;Now, let's roll the RNG dice to see if a powerup should appear...
 
  ;We'll give it a (1/8) * (3/4) chance, a bit under 10%.
- if rand&7 <> 0 then goto _skip_updatePreviousPosition
+ ;if rand&7 <> 0 then goto _skip_updatePreviousPosition
 
  temp1 = rand/64 ;Equivalent to (rand&3); This is a division to heed a warning that using only ands or only divisions can cause patterns sometimes... or something like that.
  if temp1 = 3 then goto _skip_updatePreviousPosition
@@ -680,49 +680,38 @@ _sr_initPowerupEffect
  if powerupType = PLIFE && myLives < 255 then myLives = myLives + 1 ;Not like you'd probably roll over your lives, but just in case you're overwriting memory/cheating, I'll check to make sure lives don't roll over.
  return
 
+ macro playSoundCh0
+ ;Load either a V byte into temp4 or a 0, which is the termination byte.
+ temp4 = {1}[ch0SoundCounter]
+ if temp4 = 0 then ch0SoundID = SNDNONE 
+ 
+ AUDV0 = temp4
+ ;If temp4 is 0 then mute the channel/set the sound ID to none. In either case, set AUDV0 to it and load the next two bytes (C, F)
+ ;Naturally, this will be garbage data if we just loaded a 0 in, but if we loaded a 0 in then we don't care about playing garbage sound because it's muted! (if this causes a crash somehow, I'll be surprised)
+ ch0SoundCounter = ch0SoundCounter + 1
+ AUDC0 = {1}[ch0SoundCounter] : ch0SoundCounter = ch0SoundCounter + 1
+ AUDF0 = {1}[ch0SoundCounter] : ch0SoundCounter = ch0SoundCounter + 1
+
+ ;Now, load the duation byte...
+ channel0SoundTimer = {1}[ch0SoundCounter] : ch0SoundCounter = ch0SoundCounter + 1
+ ;And that's it!
+end
+
+
 _sr_soundManager
 
  ;Channel 1 still only will be playing simple stuff, so we won't change its logic much.
  if channel1SoundTimer = 0 then AUDV1 = 0 else channel1SoundTimer = channel1SoundTimer - 1
 
  ;Channel 0 is another story.
- ;if channel0SoundTimer = 0 then AUDV0 = 0 else channel0SoundTimer = channel0SoundTimer - 1
- 
+
  ; Channel 0 sound effect management:
  channel0SoundTimer = channel0SoundTimer - 1
 
  ; if channel0SoundTimer is nonzero, then skip upating what sound is happening on channel 0.
  if channel0SoundTimer > 0 then goto _skip_channel0SoundUpdate
  
- if ch0SoundID <> SNDPOWERUP then goto _skip_sndpowerup
- ;Load the sound counter into temp3.
-
-
- ;Load either a V byte into temp4 or a 255, which is essentially the terminator. if we find that terminator, mute the channel.
- temp4 = snd_powerup[ch0SoundCounter]
- if temp4 = 255 then goto _clearCh0
-
- ;Otherwise, load the next 2 bytes.
- ch0SoundCounter = ch0SoundCounter + 1
- temp5 = snd_powerup[ch0SoundCounter] : ch0SoundCounter = ch0SoundCounter + 1
- temp6 = snd_powerup[ch0SoundCounter] : ch0SoundCounter = ch0SoundCounter + 1
-
- ;Now initialize the channel with the new data.
- temp2 = snd_powerup[ch0SoundCounter]
- callmacro soundInitC0 temp4 temp5 temp6 temp2
-
- ;Increment the counter one last time.
- ch0SoundCounter = ch0SoundCounter + 1
-
-
-_skip_sndpowerup
-
-
- goto _skip_channel0SoundUpdate
-
- ;If we goto here, then clear (mute) the sound effect.
-_clearCh0
- ch0SoundID = SNDNONE : AUDV0 = 0
+ if ch0SoundID = SNDPOWERUP then callmacro playSoundCh0 snd_powerup
 
 _skip_channel0SoundUpdate
  return
@@ -789,7 +778,7 @@ end
  4
  4,4,23
  4
- 255 
+ 0 
 end
 
  data snd_yoyoThrow
@@ -803,5 +792,5 @@ end
  2
  8,15,8
  4
- 255 
+ 0 
 end
