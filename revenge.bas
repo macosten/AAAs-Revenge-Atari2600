@@ -8,6 +8,8 @@
 
  set kernel multisprite
  set romsize 4k
+
+ set optimization noinlinedata
  
  ; Uncommenting the following line will replace the score with the approximate number of free cycles available in a given frame (+ or - 64).
  ;White is positive; red is negative. We don't want this number to be red (when I tested it out, it wasn't, but I did test it on an emulator).
@@ -114,8 +116,6 @@ end
 
  dim ch0SoundID = missile0x
 
- ;But this allows us to set the upper 5 bytes to be the sound counter, giving us sounds that can be up to 32 bytes long (more likely, 28, but we'll see).
-
  dim ch0SoundCounter = x
  
  const SNDNONE =  0
@@ -123,7 +123,7 @@ end
  const SNDLOSELIFE = 2
  const SNDGAMEOVER = 3
  const SNDHITROOTHLESS = 4
- const SNDRES1 = 5
+ const SNDTHROWYOYO = 5
  const SNDRES2 = 6
  const SNDRES3 = 7
  
@@ -157,13 +157,8 @@ end
  ;===
 
  ;===
- ; Constants and other data
+ ; Constants
  ;===
-
- ;A convenient way to store the correct values for NUSIZ5 when we have 0, 1, 2, or 3 lives.
- data livesNUSIZTable
- 0, 0, 1, 3
-end
 
 ;Measured coordinates, mostly for where the player's positions should be, but also for the guards.
  const XPOS0 = $26 ; 38
@@ -200,50 +195,6 @@ end
  const PSNOWFLAKE = 0
  const PCOIN = 1
  const PLIFE = 2
-
- data player0xTable
- XPOS2,  XPOS3,  XPOS4,  XPOS4, XPOS4, XPOS3, XPOS2, XPOS1, XPOS0, XPOS0, XPOS0, XPOS1
-end
-
- data player0yTable
- YPOS0, YPOS0, YPOS1, YPOS2, YPOS3, YPOS4, YPOS4, YPOS4, YPOS3, YPOS2, YPOS1, YPOS0
-end
-
- data yoyoXvelocityintTable
- $00, $FF, $FF, $FF, $FF, $FF, $00, $00, $01, $01, $01, $00
-end
- 
- data yoyoXvelocityfracTable
- $00, $8C, $00, $00, $00, $8C, $00, $80, $00, $00, $00, $80
-end
-
- data yoyoYvelocityintTable
- $FF, $FF, $FF, $00, $00, $01, $01, $01, $00, $00, $FF, $FF
-end 
-
- data yoyoYvelocityfracTable
- $00, $00, $80, $00, $80, $00, $00, $00, $80, $00, $80, $00
-end
-
- data player4xTable
- PXLEFT, PXCENTER, PXRIGHT
-end
-
- data snd_powerup
- 12,4,23
- 4
- 10,4,29
- 4
- 8,4,23
- 4
- 6,4,29
- 4
- 4,4,23
- 4
- 255 
-end
-
-
 
  ;With the multisprite kernel, the playfield is stored in ROM, so I'm putting it up here with the other constants.
 ;The playfield is the grid of blocks you'll see on the screen.
@@ -560,7 +511,6 @@ end
  ;====
 _skip_updatePreviousPosition
 
-
  ;If the yoyo is touching any of the guards (the virtual sprites), return the yoyo to the player, then decrement lives.
  ;The fact that the guard we run into specifically doesn't matter is actually helpful, because it saves us from checking coordinates of virtual sprites.
 
@@ -777,6 +727,12 @@ _clearCh0
 _skip_channel0SoundUpdate
  return
 
+
+ ;====
+ ;Data Tables
+ ;===
+
+
  inline text12b_mod.asm ;text12b_mod is just like text12b in this same repo, except with unneeded characters removed (numbers and some punctuation) to save space in the final binary.
  ; The numbers have all been removed. if you want to add them back in, edit text12b_mod, but beware: the game won't fit in 4k.
  inline text12a.asm
@@ -789,4 +745,63 @@ _skip_channel0SoundUpdate
   __M, __O, __V, __E, _sp, __A, __R, __O, __U, __N, __D, _ex
 end
 
+ data yoyoXvelocityintTable
+ $00, $FF, $FF, $FF, $FF, $FF, $00, $00, $01, $01, $01, $00
+end
+ 
+ data yoyoXvelocityfracTable
+ $00, $8C, $00, $00, $00, $8C, $00, $80, $00, $00, $00, $80
+end
 
+ data yoyoYvelocityintTable
+ $FF, $FF, $FF, $00, $00, $01, $01, $01, $00, $00, $FF, $FF
+end 
+
+ data yoyoYvelocityfracTable
+ $00, $00, $80, $00, $80, $00, $00, $00, $80, $00, $80, $00
+end
+
+ data player0xTable
+ XPOS2,  XPOS3,  XPOS4,  XPOS4, XPOS4, XPOS3, XPOS2, XPOS1, XPOS0, XPOS0, XPOS0, XPOS1
+end
+
+ data player0yTable
+ YPOS0, YPOS0, YPOS1, YPOS2, YPOS3, YPOS4, YPOS4, YPOS4, YPOS3, YPOS2, YPOS1, YPOS0
+end
+
+ data player4xTable
+ PXLEFT, PXCENTER, PXRIGHT
+end
+
+ ;A convenient way to store the correct values for NUSIZ5 when we have 0, 1, 2, or 3 lives.
+ data livesNUSIZTable
+ 0, 0, 1, 3
+end
+
+ data snd_powerup
+ 12,4,23
+ 4
+ 10,4,29
+ 4
+ 8,4,23
+ 4
+ 6,4,29
+ 4
+ 4,4,23
+ 4
+ 255 
+end
+
+ data snd_yoyoThrow
+ 8,15,0
+ 2
+ 12,15,1
+ 2
+ 10,15,3
+ 2
+ 10,15,5
+ 2
+ 8,15,8
+ 4
+ 255 
+end
