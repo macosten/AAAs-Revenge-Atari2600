@@ -37,24 +37,6 @@ end
  channel1SoundTimer = {4}
 end
 
- macro playSoundCh0
- ;Load either a V byte into temp4 or a 0, which is the termination byte.
- temp4 = {1}[ch0SoundCounter]
- if temp4 = 0 then ch0SoundID = SNDNONE 
- 
- AUDV0 = temp4
- ;If temp4 is 0 then mute the channel/set the sound ID to none. In either case, set AUDV0 to it and load the next two bytes (C, F)
- ;Naturally, this will be garbage data if we just loaded a 0 in, but if we loaded a 0 in then we don't care about playing garbage sound because it's muted! (if this causes a crash somehow, I'll be surprised)
- ch0SoundCounter = ch0SoundCounter + 1
- AUDC0 = {1}[ch0SoundCounter] : ch0SoundCounter = ch0SoundCounter + 1
- AUDF0 = {1}[ch0SoundCounter] : ch0SoundCounter = ch0SoundCounter + 1
-
- ;Now, load the duation byte...
- channel0SoundTimer = {1}[ch0SoundCounter] : ch0SoundCounter = ch0SoundCounter + 1
- ;And that's it!
-end
-
-
  ; ===
  ; Variable definitions/DIMs/DEFs
  ; ===
@@ -137,7 +119,7 @@ end
  ;Sets up a sound effect to be played (on channel 0) with the ID provided.
  macro setupSFX 
  ch0SoundID = {1}
- ch0SoundCounter = 0
+ ch0SoundCounter = sndOffsetTable[{1}]
  channel0SoundTimer = 1
 end
 
@@ -649,11 +631,22 @@ _sr_soundManager
 
  ; if channel0SoundTimer is nonzero, then skip upating what sound is happening on channel 0.
  if channel0SoundTimer > 0 then goto _skip_channel0SoundUpdate
- 
+ if ch0SoundID = SNDNONE then goto _skip_channel0SoundUpdate 
 ;Otherwise, which sound do we want to play?
- if ch0SoundID = SNDPOWERUP then callmacro playSoundCh0 snd_powerup
- if ch0SoundID = SNDTHROWYOYO then callmacro playSoundCh0 snd_yoyoThrow
- if ch0SoundID = SNDHITROOTHLESS then callmacro playSoundCh0 snd_hitRoothless
+
+ ;Load either a V byte into temp4 or a 0, which is the termination byte.
+ if snd_table[ch0SoundCounter] = 0 then ch0SoundID = SNDNONE 
+ 
+ AUDV0 =  snd_table[ch0SoundCounter]
+ ;If temp4 is 0 then mute the channel/set the sound ID to none. In either case, set AUDV0 to it and load the next two bytes (C, F)
+ ;Naturally, this will be garbage data if we just loaded a 0 in, but if we loaded a 0 in then we don't care about playing garbage sound because it's muted! (if this causes a crash somehow, I'll be surprised)
+ ch0SoundCounter = ch0SoundCounter + 1
+ AUDC0 = snd_table[ch0SoundCounter] : ch0SoundCounter = ch0SoundCounter + 1
+ AUDF0 = snd_table[ch0SoundCounter] : ch0SoundCounter = ch0SoundCounter + 1
+
+ ;Now, load the duation byte...
+ channel0SoundTimer = snd_table[ch0SoundCounter] : ch0SoundCounter = ch0SoundCounter + 1
+ ;And that's it!
 
 _skip_channel0SoundUpdate
  return
@@ -759,8 +752,14 @@ end
  0, 0, 1, 3
 end
 
- data snd_powerup
- 12,4,23
+; Since my desire to get tables of pointers seems to be difficult to get working without using assembly and since I'm not going to be having *that* many sound effects, I'll just use one big table and keep track of offsets.
+
+ data sndOffsetTable
+ 0, 0, 21, 42
+end
+
+ data snd_table 
+ 12,4,23 ;snd_powerup, offset = 0
  4
  10,4,29
  4
@@ -770,11 +769,8 @@ end
  4
  4,4,23
  4
- 0 
-end
-
- data snd_yoyoThrow
- 8,15,0
+ 0 ; 21 bytes long
+ 8,15,0 ; snd_yoyoThrow, offset = 21
  2
  12,15,1
  2
@@ -784,11 +780,8 @@ end
  2
  8,15,8
  4
- 0 
-end
-
- data snd_hitRoothless
- 8,8,0
+ 0 ; 21 bytes long
+ 8,8,0 ; snd_hitRoothless, offset = 42
  2
  8,14,1
  2
@@ -798,7 +791,7 @@ end
  2
  4,14,3
  2
- 0
+ 0 ; 21 bytes long
 end
 
 
