@@ -512,7 +512,7 @@ _skip_powerup
  ;if bally <= GUARDTOP && bally >= GUARDBOTTOM then 
  callmacro returnYoyoToPlayer : yoyoXvelocity = 0 : yoyoYvelocity = 0 : myLives = myLives - 1 : callmacro soundInitC1 10 6 16 8
  ;Check for a game over now.
- if myLives = 0 then player5y = 0 : TextIndex = gameOverStringOffset : COLUP4 = GAMEOVERCOLOR : goto _gameOverLoop ; end the game if we're out of lives.
+ if myLives = 0 then player5y = 0 : TextIndex = gameOverStringOffset : COLUP4 = GAMEOVERCOLOR : callmacro setupSFX SNDGAMEOVER : goto _gameOverLoop ; end the game if we're out of lives.
 
 _skip_player1BallCollision
 
@@ -704,9 +704,6 @@ _sr_initPowerupEffect
  data powerupColorTable
  $9F, $FC, $40
 end
- inline text12b_mod.asm ;text12b_mod is just like text12b in this same repo, except with unneeded characters removed (numbers and some punctuation) to save space in the final binary.
- ; The numbers have all been removed. if you want to add them back in, edit text12b_mod, but beware: the game won't fit in 4k.
- inline text12a.asm
 
  data text_strings
  __A, __V, __I, __N, __R, __O, __O, __V, __E, __N, __G, __E ;Each line must have 12 characters.
@@ -755,7 +752,7 @@ end
 ; Since my desire to get tables of pointers seems to be difficult to get working without using assembly and since I'm not going to be having *that* many sound effects, I'll just use one big table and keep track of offsets.
 
  data sndOffsetTable
- 0, 0, 21, 42
+ 0, 0, 21, 42, 63
 end
 
  data snd_table 
@@ -792,7 +789,20 @@ end
  4,14,3
  2
  0 ; 21 bytes long
+ 8,12,23 ;snd_gameOver (preliminary), offset = 63
+ 10
+ 8,12,19
+ 10
+ 8,12,15
+ 10
+ 8,12,11
+ 42
+ 0 ; 17 bytes long (so far)
 end
+
+ inline text12b_mod.asm ;text12b_mod is just like text12b in this same repo, except with unneeded characters removed (numbers and some punctuation) to save space in the final binary.
+ ; The numbers have all been removed. if you want to add them back in, edit text12b_mod, but beware: the game won't fit in 4k.
+ inline text12a.asm
 
 
 
