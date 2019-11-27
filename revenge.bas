@@ -19,10 +19,14 @@
 
  ; One of my design constraints is sticking to a maximum size of 4k. If you fork this game, you might not care, but beware that some things may need to be bankswitched explicitly if we increase the ROM size.
 
+ ; The following DIMs are simply to get Visual BB to stop complaining about my use of these assembly instructions...
+ dim lda = 1
+ dim sta = 1
+ ; Using such a weird IDE is probably not the best idea, but whatever...
+
  ;===
  ; Macros
  ;===
-
  ;A macro to return the yoyo (ball) to the center of the player sprite.
  macro returnYoyoToPlayer
  yoyoX = player0x + 4
@@ -255,12 +259,40 @@ _startGame
  ; =========================
 
  ; Initialize relevant variables.
- a = 0 : b = 0 : c = 0 : d = 0 : e = 0 : f = 0 : g = 0 : h = 0 : i = 0 : j = 0 : k = 0 : l = 0 : m = 0 : n = 0 : o = 0 : p = 0 : q = 0 : r = 0 : myLives = 3
- previousPositionFiredAt = $FF : u = 0 : freezeTimer = 0
- TextTimer = 0
 
+ ; Zero these out with assembly; load 0 into the A register (different from the variable A) and then store that 0 in all the variables we want zeroed out.
+ asm
+ lda #0
+ sta a
+ sta b
+ sta c 
+ sta d
+ sta e
+ sta f
+ sta g
+ sta h
+ sta i
+ sta j
+ sta k
+ sta l
+ sta m
+ sta n
+ sta o
+ sta p
+ sta q
+ sta r
+ sta u
+ sta freezeTimer
+ sta TextTimer
+ sta AUDV0
+end
+
+ ; Initialize the other variables to these values:
+ myLives = 3
+ previousPositionFiredAt = $FF
+
+ ; "Score" is a special case so I'm not going to mess with it in asm...
  score = 0
-
 
  ; Player and enemy sprite data.
 
@@ -655,12 +687,31 @@ _skip_channel0SoundUpdate
 _sr_movePlayer
  ; direct placement of "playerPosition" into the brackets seems to make it not compile. This might be a bug with bB...?
  ; Workaround: use "a" instead, which is what playerPosition is dim'd to.
- player0x = player0xTable[a]
- player0y = player0yTable[a]
- yoyoXvelocityint = yoyoXvelocityintTable[a]
- yoyoXvelocityfrac = yoyoXvelocityfracTable[a]
- yoyoYvelocityint = yoyoYvelocityintTable[a]
- yoyoYvelocityfrac = yoyoYvelocityfracTable[a]
+ ; player0x = player0xTable[a]
+ ; player0y = player0yTable[a]
+ ; yoyoXvelocityint = yoyoXvelocityintTable[a]
+ ; yoyoXvelocityfrac = yoyoXvelocityfracTable[a]
+ ; yoyoYvelocityint = yoyoYvelocityintTable[a]
+ ; yoyoYvelocityfrac = yoyoYvelocityfracTable[a]
+ ; A more optimized assembly version follows.
+ ; We load the variable "a" into the X register, then use the x register as the offset for each table. This saves a redundant "LDX A" for each access after the first.
+ asm
+ ldx a
+ lda player0xTable,x
+ sta player0x 
+ lda player0yTable,x
+ sta player0y
+ lda yoyoXvelocityintTable,x
+ sta yoyoXvelocityint
+ lda yoyoXvelocityfracTable,x
+ sta yoyoXvelocityfrac
+ lda yoyoYvelocityintTable,x
+ sta yoyoYvelocityint
+ lda yoyoYvelocityfracTable,x
+ sta yoyoYvelocityfrac 
+end
+
+
  return
 
 _sr_player3direction
@@ -800,10 +851,5 @@ end
  0 ; 17 bytes long (so far)
 end
 
- inline text12b_mod.asm ;text12b_mod is just like text12b in this same repo, except with unneeded characters removed (numbers and some punctuation) to save space in the final binary.
- ; The numbers have all been removed. if you want to add them back in, edit text12b_mod, but beware: the game won't fit in 4k.
+ inline text12b_mod.asm ; text12b_mod is just like text12b in this same repo, except with unneeded characters removed to save space in the final binary.
  inline text12a.asm
-
-
-
-; One byte is free here...
